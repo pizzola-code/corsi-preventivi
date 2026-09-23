@@ -46,6 +46,9 @@ jobs:
       # rimandare un preventivo se la trattativa viene cancellata. I giri sono
       # in fila (concurrency), quindi non si pestano.
       - name: Salva il registro degli invii
+        # anche se il passo prima e' andato storto: un invio riuscito va
+        # registrato comunque, o il giro dopo potrebbe rifarlo
+        if: always()
         run: |
           if [ -n "$(git status --porcelain inviati.txt)" ]; then
             git config user.name "motore-preventivi"

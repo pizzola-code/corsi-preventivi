@@ -37,6 +37,7 @@ import time
 import urllib.request
 import uuid
 import hashlib
+import re
 
 QUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, QUI)
@@ -369,7 +370,8 @@ def lavora(inv, prova):
         return
     # Le prove si chiamano PROVA: cosi' si possono cancellare senza che il
     # motore le riveda come nuove, e senza toccare la soglia.
-    if scuola.upper().startswith("PROVA"):
+    # parola intera: "Provaglio d'Iseo" e' un comune con scuole vere
+    if re.match(r"PROVA\b", scuola.upper()):
         print("  salto la prova di %s" % scuola)
         return
     stato, ripresa = stato_richiesta(chiave)
@@ -494,7 +496,7 @@ def lavora(inv, prova):
     # darebbe errore, quindi in ripresa si pubblica solo cio' che e' ancora bozza
     gia_online = prev_esistente and hs(
         "/crm/v3/objects/quotes/%s?properties=hs_quote_link" % prev
-    )["properties"].get("hs_quote_link")
+    ).get("properties", {}).get("hs_quote_link")
     if not gia_online:
         r = hs("/crm/v3/objects/quotes/" + prev, {"properties": {
             "hs_slug": uuid.uuid4().hex[:20], "hs_domain": DOMINIO,
@@ -506,7 +508,7 @@ def lavora(inv, prova):
     dati = {}
     for _ in range(12):
         p = hs("/crm/v3/objects/quotes/%s?properties=hs_quote_link,hs_quote_number,"
-               "hs_pdf_download_link,hs_pdf_generation_status" % prev)["properties"]
+               "hs_pdf_download_link,hs_pdf_generation_status" % prev).get("properties", {})
         if p.get("hs_quote_link") and p.get("hs_pdf_generation_status") == "PDF_GENERATED":
             dati = p
             break
@@ -562,8 +564,18 @@ def main():
         if not dopo or not risultati or risultati[-1]["submittedAt"] < soglia:
             break
     print("richieste nelle ultime %d ore: %d" % (ORE_INDIETRO, len(nuovi)))
+    errori = 0
     for inv in reversed(nuovi):
-        lavora(inv, prova)
+        # una richiesta che va storta non deve fermare le altre: resta senza
+        # data di invio e il giro successivo la riprende
+        try:
+            lavora(inv, prova)
+        except Exception as e:
+            errori += 1
+            print("  ERRORE su una richiesta (%s: %s): la riprendo al prossimo giro"
+                  % (type(e).__name__, str(e)[:160]))
+    if errori:
+        print("\nrichieste con errore in questo giro: %d" % errori)
     print("\nfatto.")
 
 
