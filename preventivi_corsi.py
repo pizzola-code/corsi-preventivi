@@ -212,11 +212,12 @@ def registra(chiave):
         f.write(impronta(chiave) + "\n")
 
 
-# Una richiesta, una trattativa. Il repository corsi-trattative (dal 17/09)
-# crea per ogni invio una trattativa "Corsi N - scuola" e la salta se ne trova
-# gia' una con invio_form_corsi uguale all'orario dell'invio. Questo motore
-# crea la STESSA trattativa - stesso nome, proprietario e descrizione - e ci
-# scrive quel marcatore; se l'altro e' passato prima, riusa la sua.
+# Una richiesta, una trattativa, e la crea solo questo motore. Fino al 23/09 lo
+# faceva anche il repository corsi-trattative ("Corsi N - scuola"), poi spento
+# per decisione di Andrea: le sue regole vivono qui - nome, referente della
+# scuola o turno Emma/Laura, descrizione, marcatore invio_form_corsi. Se una
+# trattativa con quel marcatore esiste gia' (le vecchie, o una riaccensione
+# per errore dell'altro), si riusa invece di aprirne una seconda.
 MARCATORE = "invio_form_corsi"
 VENDITORI = [("35980393", "Emma Zecca"), ("37524294", "Laura Primiceri")]
 
