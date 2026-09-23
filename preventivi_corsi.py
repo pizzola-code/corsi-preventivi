@@ -244,6 +244,38 @@ def proprietario_per(referente):
     return min(VENDITORI, key=lambda x: (carico.get(x[0], 0), VENDITORI.index(x)))[0]
 
 
+def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola):
+    """L'attivita' di richiamata la crea HubSpot all'invio del modulo (flusso
+    4929128670): al referente della scuola se c'e', altrimenti sempre a Emma.
+    La trattativa invece, senza referente, va a turno a Emma o Laura. Qui la
+    richiamata passa alla stessa persona della trattativa e ci viene agganciata,
+    cosi' chi ha la trattativa ha anche la telefonata da fare."""
+    if not contatto:
+        return
+    a = hs("/crm/v4/objects/contacts/%s/associations/tasks?limit=100" % contatto)
+    for x in a.get("results", []):
+        t = hs("/crm/v3/objects/tasks/%s?properties=hs_task_subject,hubspot_owner_id,"
+               "hs_createdate,hs_task_status" % x["toObjectId"]).get("properties", {})
+        oggetto = t.get("hs_task_subject") or ""
+        if not oggetto.startswith("Preventivo corsi:") or scuola not in oggetto:
+            continue
+        if t.get("hs_task_status") == "COMPLETED":
+            continue
+        try:
+            creata = datetime.datetime.fromisoformat(
+                t["hs_createdate"].replace("Z", "+00:00")).timestamp() * 1000
+        except Exception:
+            continue
+        # solo la richiamata nata da questa richiesta (pochi minuti dopo l'invio)
+        if not (submitted_at - 60000 <= creata <= submitted_at + 1800000):
+            continue
+        if t.get("hubspot_owner_id") != responsabile:
+            hs("/crm/v3/objects/tasks/" + x["toObjectId"],
+               {"properties": {"hubspot_owner_id": responsabile}}, "PATCH")
+            print("  richiamata passata a %s, come la trattativa" % responsabile)
+        lega("tasks", x["toObjectId"], "deals", trattativa)
+
+
 def stato_richiesta(chiave):
     """Dice se la richiesta e' gia' servita, rimasta a meta' o ancora da fare.
 
@@ -545,6 +577,10 @@ def lavora(inv, prova):
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
     print("  preventivo %s inviato a %s (copia a %s) da %s"
           % (dati["hs_quote_number"], v["email"], MEPA, da))
+    try:
+        allinea_richiamata(contatto, trattativa, responsabile, inv["submittedAt"], scuola)
+    except Exception as e:            # mai far fallire un invio gia' riuscito
+        print("  richiamata non allineata (%s)" % type(e).__name__)
 
 
 def main():
