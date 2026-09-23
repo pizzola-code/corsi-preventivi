@@ -1,0 +1,39 @@
+name: preventivi-corsi
+
+# Il catalogo corsi promette alla scuola il preventivo a stretto giro: questo
+# lavoro e' cio' che mantiene la promessa. Il ritmo lo da' cron-job.org, che
+# chiama workflow_dispatch ogni minuto; il cron interno resta come rete di
+# sicurezza, perche' lo scheduler di GitHub consegna i giri con molto ritardo
+# (misurati 18 minuti di media, punte di 41).
+on:
+  workflow_dispatch:
+    inputs:
+      prova:
+        description: "Solo prova: elenca le richieste senza creare nulla"
+        type: boolean
+        default: false
+  schedule:
+    - cron: '*/10 * * * *'
+
+concurrency:
+  group: preventivi-corsi
+  cancel-in-progress: false
+
+jobs:
+  preventivi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Richieste nuove -> preventivo e email
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          # il preventivo parte da no_reply@, non dalla casella di chi ha autenticato
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: |
+          python preventivi_corsi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
