@@ -160,13 +160,22 @@ def euro(n):
 
 
 def righe_da(testo):
+    """Legge le righe del carrello: corso - licenza X - NN EUR - data - cod. CODICE.
+
+    Il titolo del corso puo' contenere lo stesso trattino lungo che separa i
+    campi ("PLS - Progettiamo la Scuola: ..."): prima il motore tagliava li' e
+    sul preventivo i due corsi PLS risultavano entrambi "PLS". Il titolo e'
+    quindi tutto cio' che precede il campo della licenza, che c'e' sempre."""
     fuori = []
     for riga in (testo or "").split("\n"):
         if not riga.strip():
             continue
         p = [x.strip() for x in riga.split(SEP)]
-        v = {"corso": p[0], "licenza": "", "prezzo": 0.0, "quando": "", "codice": ""}
-        for pezzo in p[1:]:
+        lic = next((i for i, x in enumerate(p) if x.lower().startswith("licenza ")), None)
+        if not lic:
+            lic = 1                      # riga senza licenza: vale il vecchio schema
+        v = {"corso": SEP.join(p[:lic]), "licenza": "", "prezzo": 0.0, "quando": "", "codice": ""}
+        for pezzo in p[lic:]:
             b = pezzo.lower()
             if b.startswith("licenza "):
                 v["licenza"] = pezzo[8:]
@@ -178,7 +187,6 @@ def righe_da(testo):
                 v["quando"] = pezzo
         fuori.append(v)
     return fuori
-
 
 def stato_richiesta(chiave):
     """Dice se la richiesta e' gia' servita, rimasta a meta' o ancora da fare.
@@ -454,8 +462,19 @@ def lavora(inv, prova):
 def main():
     prova = "--prova" in sys.argv
     da = int((datetime.datetime.now() - datetime.timedelta(hours=ORE_INDIETRO)).timestamp() * 1000)
-    s = hs("/form-integrations/v1/submissions/forms/%s?limit=50" % MODULO)
-    nuovi = [x for x in s.get("results", []) if x["submittedAt"] >= max(da, DA_QUANDO)]
+    soglia = max(da, DA_QUANDO)
+    # Le richieste arrivano dalla piu' recente: si sfoglia finche' si scende sotto
+    # la soglia. Con una pagina sola (50) una giornata di campagna poteva far
+    # uscire dalla lista una richiesta rimasta indietro.
+    nuovi, dopo = [], None
+    for _ in range(40):
+        pagina = hs("/form-integrations/v1/submissions/forms/%s?limit=50%s"
+                    % (MODULO, "&after=" + dopo if dopo else ""))
+        risultati = pagina.get("results", [])
+        nuovi += [x for x in risultati if x["submittedAt"] >= soglia]
+        dopo = (pagina.get("paging") or {}).get("next", {}).get("after")
+        if not dopo or not risultati or risultati[-1]["submittedAt"] < soglia:
+            break
     print("richieste nelle ultime %d ore: %d" % (ORE_INDIETRO, len(nuovi)))
     for inv in reversed(nuovi):
         lavora(inv, prova)
