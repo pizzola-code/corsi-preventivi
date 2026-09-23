@@ -212,6 +212,36 @@ def registra(chiave):
         f.write(impronta(chiave) + "\n")
 
 
+# Una richiesta, una trattativa. Il repository corsi-trattative (dal 17/09)
+# crea per ogni invio una trattativa "Corsi N - scuola" e la salta se ne trova
+# gia' una con invio_form_corsi uguale all'orario dell'invio. Questo motore
+# crea la STESSA trattativa - stesso nome, proprietario e descrizione - e ci
+# scrive quel marcatore; se l'altro e' passato prima, riusa la sua.
+MARCATORE = "invio_form_corsi"
+VENDITORI = [("35980393", "Emma Zecca"), ("37524294", "Laura Primiceri")]
+
+
+def trattativa_dell_invio(submitted_at):
+    r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+        {"propertyName": MARCATORE, "operator": "EQ", "value": str(submitted_at)}]}],
+        "properties": ["dealname", "hubspot_owner_id"], "limit": 1}, "POST")
+    return (r.get("results") or [None])[0]
+
+
+def proprietario_per(referente):
+    """Il referente commerciale della scuola; senza, chi dei due ne ha meno."""
+    if referente:
+        return referente
+    carico = {}
+    for oid, _ in VENDITORI:
+        r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+            {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE},
+            {"propertyName": "hubspot_owner_id", "operator": "EQ", "value": oid}]}],
+            "limit": 1}, "POST")
+        carico[oid] = r.get("total", 0)
+    return min(VENDITORI, key=lambda x: (carico.get(x[0], 0), VENDITORI.index(x)))[0]
+
+
 def stato_richiesta(chiave):
     """Dice se la richiesta e' gia' servita, rimasta a meta' o ancora da fare.
 
@@ -354,20 +384,55 @@ def lavora(inv, prova):
         print("  --prova: mi fermo qui")
         return
 
+    # il contatto serve per intestare il preventivo alla scuola e per agganciare
+    # la trattativa: si cerca prima di creare il documento
+    cerca = hs("/crm/v3/objects/contacts/search", {"filterGroups": [{"filters": [
+        {"propertyName": "email", "operator": "EQ", "value": v["email"]}]}],
+        "properties": ["associatedcompanyid", "codice_meccanografico", "codice_cliente",
+                       "address", "city", "zip", "state", "hubspot_owner_id"], "limit": 1}, "POST")
+    dati_contatto = cerca["results"][0]["properties"] if cerca.get("results") else {}
+    contatto = cerca["results"][0]["id"] if cerca.get("results") else None
+    azienda = dati_contatto.get("associatedcompanyid")
+    destinatario = dati_scuola(v, azienda, dati_contatto)
+
+    # se corsi-trattative e' passato prima, la trattativa c'e' gia': si riusa
+    if not ripresa:
+        esistente = trattativa_dell_invio(inv["submittedAt"])
+        if esistente:
+            ripresa = esistente["id"]
+            hs("/crm/v3/objects/deals/" + ripresa,
+               {"properties": {"chiave_richiesta_corsi": chiave}}, "PATCH")
+            print("  uso la trattativa %s gia' aperta per questa richiesta" % ripresa)
+
     if ripresa:
         # un giro precedente si e' fermato per strada: si riprende da li' invece
         # di rifare tutto, cosi' la scuola non riceve due preventivi
         trattativa = ripresa
         print("  riprendo la trattativa %s rimasta a meta'" % trattativa)
     else:
+        numero = v.get("numero_corsi") or str(len(righe))
+        totale = v.get("totale_preventivo_corsi") or str(netto)
+        corpo = ("Richiesta dal catalogo corsi.\n\nCorsi richiesti (%s):\n%s\n\n"
+                 "Sconto applicato: %s%%\nTotale: %s euro\n\n"
+                 "Chi scrive: %s %s - %s\nTelefono: %s\nE-mail: %s\n\nNote: %s"
+                 % (numero, v.get("corsi_richiesti") or "", v.get("sconto_corsi") or "0",
+                    totale, v.get("firstname", ""), v.get("lastname", ""), v.get("ruolo", ""),
+                    v.get("mobilephone", ""), v.get("email", ""), v.get("message", "")))
         d = hs("/crm/v3/objects/deals", {"properties": {
-            "dealname": "Corsi di formazione - %s" % scuola, "pipeline": PIPELINE,
-            "dealstage": STADIO_RICHIESTA, "amount": str(netto),
-            "hubspot_owner_id": PROPRIETARIO, "chiave_richiesta_corsi": chiave}}, "POST")
+            "dealname": ("Corsi %s - %s" % (numero, scuola))[:200], "pipeline": PIPELINE,
+            "dealstage": STADIO_RICHIESTA, "amount": totale,
+            "hubspot_owner_id": proprietario_per(
+                (dati_contatto.get("hubspot_owner_id") or "").strip()),
+            "description": corpo[:60000],
+            MARCATORE: str(inv["submittedAt"]), "chiave_richiesta_corsi": chiave}}, "POST")
         if "_err" in d:
             print("  trattativa NON creata:", d["_msg"])
             return
         trattativa = d["id"]
+
+    # il preventivo e' di chi segue la trattativa, chiunque l'abbia aperta
+    responsabile = (hs("/crm/v3/objects/deals/%s?properties=hubspot_owner_id" % trattativa)
+                    .get("properties", {}).get("hubspot_owner_id") or PROPRIETARIO)
 
     ids = figli(trattativa, "line_items") if ripresa else []
     for r in (righe if not ids else []):
@@ -385,16 +450,6 @@ def lavora(inv, prova):
         ids.append(li["id"])
         lega("line_items", li["id"], "deals", trattativa)
 
-    # il contatto serve per intestare il preventivo alla scuola e per agganciare
-    # la trattativa: si cerca prima di creare il documento
-    cerca = hs("/crm/v3/objects/contacts/search", {"filterGroups": [{"filters": [
-        {"propertyName": "email", "operator": "EQ", "value": v["email"]}]}],
-        "properties": ["associatedcompanyid", "codice_meccanografico", "codice_cliente",
-                       "address", "city", "zip", "state"], "limit": 1}, "POST")
-    dati_contatto = cerca["results"][0]["properties"] if cerca.get("results") else {}
-    contatto = cerca["results"][0]["id"] if cerca.get("results") else None
-    azienda = dati_contatto.get("associatedcompanyid")
-    destinatario = dati_scuola(v, azienda, dati_contatto)
 
     prev_esistente = (figli(trattativa, "quotes") or [None])[0] if ripresa else None
     note = (NOTE_UNO if len(righe) == 1 else NOTE_PIU) + PARITARIE
@@ -442,7 +497,7 @@ def lavora(inv, prova):
     if not gia_online:
         r = hs("/crm/v3/objects/quotes/" + prev, {"properties": {
             "hs_slug": uuid.uuid4().hex[:20], "hs_domain": DOMINIO,
-            "hubspot_owner_id": PROPRIETARIO, "hs_status": "APPROVAL_NOT_NEEDED"}}, "PATCH")
+            "hubspot_owner_id": responsabile, "hs_status": "APPROVAL_NOT_NEEDED"}}, "PATCH")
         if "_err" in r:
             print("  preventivo NON pubblicato:", r["_msg"])
             return
