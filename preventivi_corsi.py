@@ -372,7 +372,10 @@ def lavora(inv, prova):
     ids = figli(trattativa, "line_items") if ripresa else []
     for r in (righe if not ids else []):
         li = hs("/crm/v3/objects/line_items", {"properties": {
-            "name": "%s - %s" % (r["corso"], r["licenza"]), "hs_sku": r["codice"],
+            # la data sta nel nome della riga: il modello stampa solo quello, e
+            # con piu' edizioni dello stesso corso la data e' cio' che le distingue
+            "name": " — ".join(x for x in (r["corso"], r["licenza"], r["quando"]) if x),
+            "hs_sku": r["codice"],
             "price": str(r["prezzo"]), "quantity": "1",
             "description": "Corso online con attestato - %s" % r["quando"],
             "hs_discount_percentage": str(sconto)}}, "POST")
