@@ -15,6 +15,10 @@ on:
   schedule:
     - cron: '*/10 * * * *'
 
+# il motore scrive il registro degli invii nel repository
+permissions:
+  contents: write
+
 concurrency:
   group: preventivi-corsi
   cancel-in-progress: false
@@ -37,3 +41,16 @@ jobs:
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
         run: |
           python preventivi_corsi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
+
+      # Il registro degli invii va salvato subito: e' cio' che impedisce di
+      # rimandare un preventivo se la trattativa viene cancellata. I giri sono
+      # in fila (concurrency), quindi non si pestano.
+      - name: Salva il registro degli invii
+        run: |
+          if [ -n "$(git status --porcelain inviati.txt)" ]; then
+            git config user.name "motore-preventivi"
+            git config user.email "no_reply@spaggiari.eu"
+            git add inviati.txt
+            git commit -m "registro: nuovi preventivi inviati"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
+          fi

@@ -36,6 +36,7 @@ import sys
 import time
 import urllib.request
 import uuid
+import hashlib
 
 QUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, QUI)
@@ -188,6 +189,29 @@ def righe_da(testo):
         fuori.append(v)
     return fuori
 
+# Registro degli invii: l'impronta (sha256) di ogni richiesta gia' servita.
+# Vive nel repository, quindi non dipende dal CRM: se qualcuno cancella la
+# trattativa, la scuola non riceve il preventivo una seconda volta. Contiene
+# solo impronte, nessun indirizzo.
+REGISTRO = os.path.join(QUI, "inviati.txt")
+
+
+def impronta(chiave):
+    return hashlib.sha256(chiave.encode("utf-8")).hexdigest()
+
+
+def registro():
+    try:
+        return {r.strip() for r in io.open(REGISTRO, encoding="utf-8") if r.strip()}
+    except FileNotFoundError:
+        return set()
+
+
+def registra(chiave):
+    with io.open(REGISTRO, "a", encoding="utf-8") as f:
+        f.write(impronta(chiave) + "\n")
+
+
 def stato_richiesta(chiave):
     """Dice se la richiesta e' gia' servita, rimasta a meta' o ancora da fare.
 
@@ -196,6 +220,8 @@ def stato_richiesta(chiave):
     lasciava la scuola senza preventivo e il giro successivo tirava dritto. Ora
     il segno di "fatto" e' la data di invio, scritta solo quando l'email e'
     partita davvero: cio' che resta a meta' viene ripreso."""
+    if impronta(chiave) in registro():
+        return "fatta", None
     r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
         {"propertyName": "chiave_richiesta_corsi", "operator": "EQ", "value": chiave}]}],
         "properties": ["preventivo_inviato_il"], "limit": 1}, "POST")
@@ -449,6 +475,7 @@ def lavora(inv, prova):
     except Exception as e:
         print("  email NON partita (%s): riprovo al prossimo giro" % type(e).__name__)
         return
+    registra(chiave)
     ora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     hs("/crm/v3/objects/deals/" + trattativa,
        {"properties": {"dealstage": STADIO_INVIATO, "preventivo_inviato_il": ora}}, "PATCH")
