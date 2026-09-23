@@ -270,7 +270,7 @@ def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola)
         if not (submitted_at - 60000 <= creata <= submitted_at + 1800000):
             continue
         if t.get("hubspot_owner_id") != responsabile:
-            hs("/crm/v3/objects/tasks/" + x["toObjectId"],
+            hs("/crm/v3/objects/tasks/%s" % x["toObjectId"],
                {"properties": {"hubspot_owner_id": responsabile}}, "PATCH")
             print("  richiamata passata a %s, come la trattativa" % responsabile)
         lega("tasks", x["toObjectId"], "deals", trattativa)
@@ -304,7 +304,9 @@ def stato_richiesta(chiave):
 
 def figli(trattativa, tipo):
     a = hs("/crm/v4/objects/deals/%s/associations/%s?limit=100" % (trattativa, tipo))
-    return [x["toObjectId"] for x in a.get("results", [])]
+    # le associazioni v4 restituiscono gli id come numeri: qui diventano testo,
+    # come quelli delle ricerche, cosi' si possono usare ovunque negli indirizzi
+    return [str(x["toObjectId"]) for x in a.get("results", [])]
 
 
 def dati_scuola(v, azienda, contatto):
@@ -435,7 +437,7 @@ def lavora(inv, prova):
         esistente = trattativa_dell_invio(inv["submittedAt"])
         if esistente:
             ripresa = esistente["id"]
-            hs("/crm/v3/objects/deals/" + ripresa,
+            hs("/crm/v3/objects/deals/%s" % ripresa,
                {"properties": {"chiave_richiesta_corsi": chiave}}, "PATCH")
             print("  uso la trattativa %s gia' aperta per questa richiesta" % ripresa)
 
@@ -530,7 +532,7 @@ def lavora(inv, prova):
         "/crm/v3/objects/quotes/%s?properties=hs_quote_link" % prev
     ).get("properties", {}).get("hs_quote_link")
     if not gia_online:
-        r = hs("/crm/v3/objects/quotes/" + prev, {"properties": {
+        r = hs("/crm/v3/objects/quotes/%s" % prev, {"properties": {
             "hs_slug": uuid.uuid4().hex[:20], "hs_domain": DOMINIO,
             "hubspot_owner_id": responsabile, "hs_status": "APPROVAL_NOT_NEEDED"}}, "PATCH")
         if "_err" in r:
@@ -570,10 +572,10 @@ def lavora(inv, prova):
         return
     registra(chiave)
     ora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    hs("/crm/v3/objects/deals/" + trattativa,
+    hs("/crm/v3/objects/deals/%s" % trattativa,
        {"properties": {"dealstage": STADIO_INVIATO, "preventivo_inviato_il": ora}}, "PATCH")
     if contatto:
-        hs("/crm/v3/objects/contacts/" + contatto,
+        hs("/crm/v3/objects/contacts/%s" % contatto,
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
     print("  preventivo %s inviato a %s (copia a %s) da %s"
           % (dati["hs_quote_number"], v["email"], MEPA, da))
