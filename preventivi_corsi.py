@@ -8,12 +8,13 @@ Ogni pochi minuti guarda le richieste arrivate dal modulo del catalogo
   2. crea le righe con corso, data, licenza, prezzo e CODICE ARTICOLO;
   3. genera il preventivo numerato, con lo sconto e le note d'acquisto;
   4. lo pubblica e manda alla scuola l'email con il PDF allegato,
-     mettendo in copia l'ufficio MePA;
+     senza copia all'ufficio MePA (Andrea 24/9/2026: riceve gia' la notifica della
+     trattativa diretta; le risposte della scuola arrivano col Reply-To);
   5. porta la trattativa allo stadio "Preventivo inviato".
 
 Le note cambiano con il numero di corsi, perche' cambia la strada d'acquisto:
 un corso si ordina da soli su MePA col codice, piu' corsi passano dalla
-trattativa diretta che apriamo noi. E' lo stesso testo che la scuola legge in
+trattativa diretta che avvia la scuola. E' lo stesso testo che la scuola legge in
 pagina, nel carrello e nel modulo: si dice una volta sola, nello stesso modo.
 
 ⚠️ Due cose imparate a spese nostre:
@@ -73,16 +74,19 @@ ORE_INDIETRO = 24
 # riconoscono dal nome della scuola, qui sotto.
 DA_QUANDO = 1790148300000   # 23/09/2026 09:25, lancio del catalogo
 
-NOTE_UNO = ("Con un solo corso, la Scuola può fare un ordine diretto (ODA) su MePA con il "
-            "codice indicato in questo preventivo. Per qualsiasi domanda può scrivere al nostro "
+# Andrea 24/9/2026: la scuola procede IN AUTONOMIA su MePA col preventivo in mano, indica il
+# CPV 80500000-9; l'esenzione IVA poggia sull'essere Ente Certificato; niente attestato.
+NOTE_UNO = ("Con un solo corso, la Scuola procede in autonomia con un ordine diretto (ODA) su "
+            "MePA, usando il codice indicato in questo preventivo e il CPV 80500000-9. Per "
+            "qualsiasi domanda può scrivere al nostro "
             "ufficio MePA: " + MEPA + ".")
 # Tonelli (22/09/2026): la trattativa diretta la avvia la scuola; noi possiamo
 # accettarla confermando la quotazione, oppure rifiutarla se l'importo non
 # corrisponde. Il testo dice esattamente questo, senza promettere una conferma
 # automatica.
-NOTE_PIU = ("Con più corsi, l'acquisto avviene con una trattativa diretta su MePA. La Scuola "
-            "apre la trattativa con Gruppo Spaggiari Parma S.p.A. e indica i codici e l'importo "
-            "di questo preventivo. Noi verifichiamo l'importo e confermiamo l'offerta.")
+NOTE_PIU = ("Con più corsi, la Scuola apre in autonomia una trattativa diretta su MePA con "
+            "Gruppo Spaggiari Parma S.p.A., indicando i codici e l'importo di questo preventivo "
+            "e il CPV 80500000-9. Noi verifichiamo l'importo e confermiamo l'offerta.")
 # solo quando uno sconto c'e': senza, la frase parlerebbe di qualcosa che non c'e'
 NOTA_SCONTO = (" Lo sconto vale solo con la trattativa diretta: con l'ordine diretto (ODA) si "
                "applica il prezzo di listino.")
@@ -91,12 +95,13 @@ NOTA_CONTATTO = (" Per qualsiasi domanda può scrivere al nostro ufficio MePA: "
 # palinsesto diverso (Emanuela Dalla Rizza, 22/09/2026). Resta per compatibilita'
 # con gli script che la importano.
 PARITARIE = ""
-CONDIZIONI = ("Offerta valida 30 giorni. I corsi si svolgono online nelle date indicate. Al "
-              "termine viene rilasciato l'attestato di partecipazione. Importi in euro, esenti "
-              "da IVA perché si tratta di formazione per le scuole.")
+CONDIZIONI = ("Offerta valida 30 giorni. I corsi si svolgono online nelle date indicate. "
+              "Importi in euro, esenti da IVA: Gruppo Spaggiari Parma S.p.A. è Ente Certificato "
+              "per erogare la Formazione del Personale della Scuola.")
 
 
 def invia(a, copia, oggetto, html, allegato):
+    # copia=None: nessuna copia (dal 24/9/2026 il preventivo non va piu' a mepa@)
     """Spedisce come no_reply@spaggiari.eu con il PDF in allegato.
 
     Se le credenziali SMTP mancano ripiega sul canale vecchio, che pero' parte
@@ -108,12 +113,14 @@ def invia(a, copia, oggetto, html, allegato):
         print("  ATTENZIONE: credenziali SMTP assenti, invio dalla casella personale")
         t = get_graph_token(os.environ["GRAPH_TENANT_ID"], os.environ["GRAPH_CLIENT_ID"],
                             os.environ["GRAPH_REFRESH_TOKEN"])
-        graph_send_mail(t["access_token"], "%s,%s" % (a, copia), oggetto, html, [allegato])
+        graph_send_mail(t["access_token"], "%s,%s" % (a, copia) if copia else a, oggetto, html,
+                        [allegato])
         return "casella personale"
     m = EmailMessage()
     m["From"] = "Spaggiari <%s>" % MITTENTE
     m["To"] = a
-    m["Cc"] = copia
+    if copia:
+        m["Cc"] = copia
     m["Reply-To"] = MEPA
     m["Subject"] = oggetto
     m.set_content("Il preventivo e' in allegato. Per leggerlo serve un lettore di posta "
@@ -475,14 +482,15 @@ def corpo_email(d):
                   % (d["sconto"], euro(d["lordo"] - d["netto"])))
     mepa = '<a href="mailto:%s" style="color:%s">%s</a>' % (MEPA, PETROLIO, MEPA)
     if len(d["righe"]) == 1:
-        come = ("<p style=\"margin:4px 0 0\">Con un solo corso, la Scuola pu&ograve; fare un "
-                "<b>ordine diretto (ODA)</b> su MePA con il codice indicato nel preventivo.</p>")
+        come = ("<p style=\"margin:4px 0 0\">Con un solo corso, la Scuola procede <b>in "
+                "autonomia</b> con un <b>ordine diretto (ODA)</b> su MePA, usando il codice "
+                "indicato nel preventivo.</p>")
     else:
         come = ("<p style=\"margin:4px 0 0\">Con pi&ugrave; corsi, l&rsquo;acquisto avviene con "
                 "una <b>trattativa diretta</b> su MePA:</p>"
                 "<ol style=\"margin:6px 0 0;padding-left:20px\">"
-                "<li>la Scuola apre la trattativa con Gruppo Spaggiari Parma S.p.A. e indica i "
-                "codici e l&rsquo;importo di questo preventivo;</li>"
+                "<li>la Scuola apre <b>in autonomia</b> la trattativa con Gruppo Spaggiari Parma "
+                "S.p.A. e indica i codici e l&rsquo;importo di questo preventivo;</li>"
                 "<li>noi verifichiamo l&rsquo;importo e confermiamo l&rsquo;offerta.</li></ol>")
         if d["sconto"]:
             come += ("<p style=\"margin:8px 0 0\">Lo sconto vale solo con la trattativa diretta: "
@@ -498,8 +506,10 @@ def corpo_email(d):
 </table>
 <div style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px">
 <b>Come si acquista</b>%(come)s
-<p style="margin:8px 0 0">Gli importi sono <b>esenti da IVA</b> perch&eacute; si tratta di
-formazione per le scuole.</p></div>
+<p style="margin:8px 0 0">Nell&rsquo;ordine su MePA indichi il <b>CPV 80500000-9</b> (servizi di
+formazione).</p>
+<p style="margin:8px 0 0">Gli importi sono <b>esenti da IVA</b>: Gruppo Spaggiari Parma S.p.A. &egrave;
+Ente Certificato per erogare la Formazione del Personale della Scuola.</p></div>
 <p>Per qualsiasi domanda pu&ograve; rispondere a questa e-mail o scrivere al nostro ufficio
 MePA: %(mepa)s.</p>
 <p>Cordiali saluti</p>
@@ -601,7 +611,7 @@ def lavora(inv, prova):
             "name": " — ".join(x for x in (r["corso"], r["licenza"], r["quando"]) if x),
             "hs_sku": r["codice"],
             "price": str(r["prezzo"]), "quantity": "1",
-            "description": "Corso online con attestato - %s" % r["quando"],
+            "description": "Corso online - %s" % r["quando"],
             "hs_discount_percentage": str(sconto)}}, "POST")
         if "_err" in li:
             print("  riga NON creata:", li["_msg"])
@@ -688,7 +698,7 @@ def lavora(inv, prova):
                          "numero": dati["hs_quote_number"], "link": dati["hs_quote_link"],
                          "righe": righe, "lordo": lordo, "netto": netto, "sconto": sconto})
     try:
-        da = invia(v["email"], MEPA,
+        da = invia(v["email"], None,
                    "Preventivo n. %s · Corsi di formazione Spaggiari" % dati["hs_quote_number"],
                    testo, ("Preventivo-%s.pdf" % dati["hs_quote_number"], pdf))
     except Exception as e:
@@ -701,8 +711,7 @@ def lavora(inv, prova):
     if contatto:
         hs("/crm/v3/objects/contacts/%s" % contatto,
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
-    print("  preventivo %s inviato a %s (copia a %s) da %s"
-          % (dati["hs_quote_number"], v["email"], MEPA, da))
+    print("  preventivo %s inviato a %s da %s" % (dati["hs_quote_number"], v["email"], da))
     # Avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
     # arrivato per e-mail. WhatsApp a chi l'ha chiesto, altrimenti SMS; se
     # WhatsApp non riesce si ripiega sull'SMS. Se il numero e' un fisso o
