@@ -245,6 +245,47 @@ def proprietario_per(referente):
     return min(VENDITORI, key=lambda x: (carico.get(x[0], 0), VENDITORI.index(x)))[0]
 
 
+def numero_cellulare(grezzo):
+    """Il numero del modulo in formato internazionale, solo se e' un cellulare
+    italiano: un fisso (che inizia per 0) l'SMS non lo riceve."""
+    cifre = re.sub(r"\D", "", grezzo or "")
+    if cifre.startswith("0039"):
+        cifre = cifre[2:]
+    if cifre.startswith("39") and len(cifre) in (11, 12) and cifre[2] == "3":
+        return cifre
+    if cifre.startswith("3") and len(cifre) in (9, 10):
+        return "39" + cifre
+    return None
+
+
+def testo_sms(nome, numero):
+    """Poche parole e un motivo per leggerle: dice che il preventivo e' arrivato
+    per e-mail e dove cercarlo se non si vede. Sotto i 160 caratteri, cosi'
+    resta un SMS solo; senza simboli fuori dall'alfabeto degli SMS."""
+    base = ("Le abbiamo inviato per e-mail il preventivo n. %s per i corsi di formazione "
+            "Spaggiari. Se non lo trova, controlli la posta indesiderata." % numero)
+    con_nome = "Gentile %s, %s" % (nome, base[0].lower() + base[1:]) if nome else base
+    return con_nome if len(con_nome) <= 160 else base
+
+
+def invia_sms(msisdn, testo):
+    """Mitto, mittente "Spaggiari". Mai bloccante: l'SMS accompagna l'e-mail,
+    non la sostituisce."""
+    chiave = os.environ.get("MITTO_API_KEY")
+    if not chiave:
+        return "chiave SMS assente"
+    corpo = {"from": "Spaggiari", "to": msisdn, "text": testo}
+    if os.environ.get("SMS_PROVA") == "1":
+        corpo["test"] = True
+    r = urllib.request.Request("https://rest.mittoapi.com/sms?format=json",
+                               data=json.dumps(corpo).encode(), method="POST",
+                               headers={"X-Mitto-API-Key": chiave,
+                                        "Content-Type": "application/json"})
+    with urllib.request.urlopen(r, timeout=30) as x:
+        esito = json.loads(x.read() or b"{}")
+    return "accettato" if esito.get("responseCode") == 0 else "rifiutato: %s" % esito
+
+
 def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola):
     """L'attivita' di richiamata la crea HubSpot all'invio del modulo (flusso
     4929128670): al referente della scuola se c'e', altrimenti sempre a Emma.
@@ -593,6 +634,19 @@ def lavora(inv, prova):
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
     print("  preventivo %s inviato a %s (copia a %s) da %s"
           % (dati["hs_quote_number"], v["email"], MEPA, da))
+    # SMS di avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
+    # arrivato per e-mail. Se il numero e' un fisso o l'invio non riesce, pazienza:
+    # l'e-mail e' gia' partita.
+    try:
+        msisdn = numero_cellulare(v.get("mobilephone"))
+        if msisdn:
+            nome_sms = " ".join(x for x in (v.get("firstname"), v.get("lastname")) if x).strip()
+            esito = invia_sms(msisdn, testo_sms(nome_sms, dati["hs_quote_number"]))
+            print("  SMS a +%s...%s: %s" % (msisdn[:4], msisdn[-2:], esito))
+        else:
+            print("  SMS non inviato: il numero del modulo non e' un cellulare")
+    except Exception as e:
+        print("  SMS non inviato (%s)" % type(e).__name__)
     try:
         allinea_richiamata(contatto, trattativa, responsabile, inv["submittedAt"], scuola)
     except Exception as e:            # mai far fallire un invio gia' riuscito

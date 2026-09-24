@@ -39,6 +39,8 @@ jobs:
           # il preventivo parte da no_reply@, non dalla casella di chi ha autenticato
           SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          # SMS di avviso sul cellulare del modulo (Mitto, mittente "Spaggiari")
+          MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
         run: |
           python preventivi_corsi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 
