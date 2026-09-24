@@ -73,31 +73,27 @@ ORE_INDIETRO = 24
 # riconoscono dal nome della scuola, qui sotto.
 DA_QUANDO = 1790148300000   # 23/09/2026 09:25, lancio del catalogo
 
-NOTE_UNO = ("Per un singolo corso la Scuola può procedere con l'ordine diretto (ODA) su MePA, "
-            "utilizzando il codice articolo indicato nel presente preventivo. Il nostro ufficio "
-            "MePA ha ricevuto copia del preventivo ed è a disposizione per qualsiasi chiarimento "
-            "all'indirizzo " + MEPA + ".")
+NOTE_UNO = ("Con un solo corso, la Scuola può fare un ordine diretto (ODA) su MePA con il "
+            "codice indicato in questo preventivo. Per qualsiasi domanda può scrivere al nostro "
+            "ufficio MePA: " + MEPA + ".")
 # Tonelli (22/09/2026): la trattativa diretta la avvia la scuola; noi possiamo
 # accettarla confermando la quotazione, oppure rifiutarla se l'importo non
 # corrisponde. Il testo dice esattamente questo, senza promettere una conferma
 # automatica.
-NOTE_PIU = ("Per l'acquisto di più corsi è prevista la trattativa diretta su MePA, che la Scuola "
-            "avvia nei confronti di Gruppo Spaggiari Parma S.p.A. indicando i codici articolo e "
-            "l'importo riportati nel presente preventivo; verificata la corrispondenza "
-            "dell'importo, confermiamo la quotazione.")
+NOTE_PIU = ("Con più corsi, l'acquisto avviene con una trattativa diretta su MePA. La Scuola "
+            "apre la trattativa con Gruppo Spaggiari Parma S.p.A. e indica i codici e l'importo "
+            "di questo preventivo. Noi verifichiamo l'importo e confermiamo l'offerta.")
 # solo quando uno sconto c'e': senza, la frase parlerebbe di qualcosa che non c'e'
-NOTA_SCONTO = (" Lo sconto si applica esclusivamente nella trattativa diretta; con l'ordine "
-               "diretto (ODA) resta valido il prezzo di catalogo.")
-NOTA_CONTATTO = (" Il nostro ufficio MePA è a disposizione per qualsiasi chiarimento all'indirizzo "
-                 + MEPA + ".")
+NOTA_SCONTO = (" Lo sconto vale solo con la trattativa diretta: con l'ordine diretto (ODA) si "
+               "applica il prezzo di listino.")
+NOTA_CONTATTO = (" Per qualsiasi domanda può scrivere al nostro ufficio MePA: " + MEPA + ".")
 # Il catalogo e' rivolto alle scuole statali: per le paritarie e' allo studio un
 # palinsesto diverso (Emanuela Dalla Rizza, 22/09/2026). Resta per compatibilita'
 # con gli script che la importano.
 PARITARIE = ""
-CONDIZIONI = ("Offerta valida 30 giorni dalla data di emissione. I corsi si svolgono online nelle "
-              "date indicate per ciascuna riga; al termine viene rilasciato l'attestato di "
-              "partecipazione. Importi in euro, esenti da IVA in quanto si tratta di attività "
-              "formativa rivolta alle istituzioni scolastiche.")
+CONDIZIONI = ("Offerta valida 30 giorni. I corsi si svolgono online nelle date indicate. Al "
+              "termine viene rilasciato l'attestato di partecipazione. Importi in euro, esenti "
+              "da IVA perché si tratta di formazione per le scuole.")
 
 
 def invia(a, copia, oggetto, html, allegato):
@@ -369,32 +365,33 @@ def corpo_email(d):
                   % (d["sconto"], euro(d["lordo"] - d["netto"])))
     mepa = '<a href="mailto:%s" style="color:%s">%s</a>' % (MEPA, PETROLIO, MEPA)
     if len(d["righe"]) == 1:
-        come = ("Per un singolo corso la Scuola pu&ograve; procedere con l&rsquo;<b>ordine "
-                "diretto (ODA)</b> su MePA, utilizzando il codice articolo indicato nel "
-                "preventivo.")
+        come = ("<p style=\"margin:4px 0 0\">Con un solo corso, la Scuola pu&ograve; fare un "
+                "<b>ordine diretto (ODA)</b> su MePA con il codice indicato nel preventivo.</p>")
     else:
-        come = ("Per l&rsquo;acquisto di pi&ugrave; corsi &egrave; prevista la <b>trattativa "
-                "diretta</b> su MePA, che la Scuola avvia nei confronti di Gruppo Spaggiari Parma "
-                "S.p.A. indicando i codici articolo e l&rsquo;importo riportati nel preventivo; "
-                "verificata la corrispondenza dell&rsquo;importo, confermiamo la quotazione.")
+        come = ("<p style=\"margin:4px 0 0\">Con pi&ugrave; corsi, l&rsquo;acquisto avviene con "
+                "una <b>trattativa diretta</b> su MePA:</p>"
+                "<ol style=\"margin:6px 0 0;padding-left:20px\">"
+                "<li>la Scuola apre la trattativa con Gruppo Spaggiari Parma S.p.A. e indica i "
+                "codici e l&rsquo;importo di questo preventivo;</li>"
+                "<li>noi verifichiamo l&rsquo;importo e confermiamo l&rsquo;offerta.</li></ol>")
         if d["sconto"]:
-            come += ("<br>Lo sconto si applica esclusivamente nella trattativa diretta; con "
-                     "l&rsquo;ordine diretto (ODA) resta valido il prezzo di catalogo.")
+            come += ("<p style=\"margin:8px 0 0\">Lo sconto vale solo con la trattativa diretta: "
+                     "con l&rsquo;ordine diretto (ODA) si applica il prezzo di listino.</p>")
     return """<div style="font:15px/1.6 Arial,sans-serif;color:#3f5453;max-width:660px">
 <p>Gentile %(nome)s,</p>
 <p>Le inviamo in allegato il <b>preventivo n. %(numero)s</b> intestato a %(scuola)s, valido
-30 giorni dalla data di emissione.</p>
+30 giorni.</p>
 <table style="border-collapse:collapse;width:100%%;font:14px/1.5 Arial,sans-serif;margin:18px 0">
 %(righe)s%(sconto)s
 <tr><td style="padding:12px;font-weight:700;color:%(p)s">Totale</td>
 <td style="padding:12px;text-align:right;font-weight:700;font-size:17px;color:%(p)s">%(tot)s</td></tr>
 </table>
-<p style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px">
-<b>Come si acquista</b><br>%(come)s<br>
-Gli importi sono <b>esenti da IVA</b>, in quanto si tratta di attivit&agrave; formativa
-rivolta alle istituzioni scolastiche.</p>
-<p>Per qualsiasi chiarimento, il nostro ufficio MePA &egrave; a Sua disposizione: pu&ograve;
-rispondere a questa e-mail oppure scrivere a %(mepa)s.</p>
+<div style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px">
+<b>Come si acquista</b>%(come)s
+<p style="margin:8px 0 0">Gli importi sono <b>esenti da IVA</b> perch&eacute; si tratta di
+formazione per le scuole.</p></div>
+<p>Per qualsiasi domanda pu&ograve; rispondere a questa e-mail o scrivere al nostro ufficio
+MePA: %(mepa)s.</p>
 <p>Cordiali saluti</p>
 <p style="margin:26px 0"><a href="%(link)s" style="background:%(o)s;color:%(p)s;
 text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;display:inline-block">
