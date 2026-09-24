@@ -73,26 +73,31 @@ ORE_INDIETRO = 24
 # riconoscono dal nome della scuola, qui sotto.
 DA_QUANDO = 1790148300000   # 23/09/2026 09:25, lancio del catalogo
 
-NOTE_UNO = ("Il codice articolo indicato in ciascuna riga è quello dell'ordine diretto (ODA) "
-            "su MePA. Questo preventivo è arrivato anche al nostro ufficio MePA: per procedere "
-            "è sufficiente rispondere a questa email.")
+NOTE_UNO = ("Per un singolo corso la Scuola può procedere con l'ordine diretto (ODA) su MePA, "
+            "utilizzando il codice articolo indicato nel presente preventivo. Il nostro ufficio "
+            "MePA ha ricevuto copia del preventivo ed è a disposizione per qualsiasi chiarimento "
+            "all'indirizzo " + MEPA + ".")
 # Tonelli (22/09/2026): la trattativa diretta la avvia la scuola; noi possiamo
 # accettarla confermando la quotazione, oppure rifiutarla se l'importo non
 # corrisponde. Il testo dice esattamente questo, senza promettere una conferma
 # automatica.
-NOTE_PIU = ("Con più corsi l'ordine passa da una trattativa diretta su MePA: la avvia la scuola "
-            "verso Gruppo Spaggiari Parma indicando i codici articolo e l'importo di questo "
-            "preventivo; noi verifichiamo che l'importo corrisponda e confermiamo la quotazione. "
-            "Lo sconto vale in trattativa diretta: con l'ordine diretto (ODA) il prezzo è quello "
-            "di catalogo. Per domande: " + MEPA + ".")
+NOTE_PIU = ("Per l'acquisto di più corsi è prevista la trattativa diretta su MePA, che la Scuola "
+            "avvia nei confronti di Gruppo Spaggiari Parma S.p.A. indicando i codici articolo e "
+            "l'importo riportati nel presente preventivo; verificata la corrispondenza "
+            "dell'importo, confermiamo la quotazione.")
+# solo quando uno sconto c'e': senza, la frase parlerebbe di qualcosa che non c'e'
+NOTA_SCONTO = (" Lo sconto si applica esclusivamente nella trattativa diretta; con l'ordine "
+               "diretto (ODA) resta valido il prezzo di catalogo.")
+NOTA_CONTATTO = (" Il nostro ufficio MePA è a disposizione per qualsiasi chiarimento all'indirizzo "
+                 + MEPA + ".")
 # Il catalogo e' rivolto alle scuole statali: per le paritarie e' allo studio un
 # palinsesto diverso (Emanuela Dalla Rizza, 22/09/2026). Resta per compatibilita'
 # con gli script che la importano.
 PARITARIE = ""
 CONDIZIONI = ("Offerta valida 30 giorni dalla data di emissione. I corsi si svolgono online nelle "
-              "date indicate in ciascuna riga; l'attestato di partecipazione viene rilasciato al "
-              "termine. Importi in euro, esenti IVA in quanto formazione rivolta alle istituzioni "
-              "scolastiche.")
+              "date indicate per ciascuna riga; al termine viene rilasciato l'attestato di "
+              "partecipazione. Importi in euro, esenti da IVA in quanto si tratta di attività "
+              "formativa rivolta alle istituzioni scolastiche.")
 
 
 def invia(a, copia, oggetto, html, allegato):
@@ -362,17 +367,23 @@ def corpo_email(d):
         sconto = ('<tr><td style="padding:4px 12px;color:#6d817f">Sconto %d%%</td>'
                   '<td style="padding:4px 12px;text-align:right;color:#6d817f">&minus;%s</td></tr>'
                   % (d["sconto"], euro(d["lordo"] - d["netto"])))
-    come = (("Il codice articolo indicato in ciascuna riga &egrave; quello dell&rsquo;ordine "
-             "diretto (ODA) su MePA.") if len(d["righe"]) == 1 else
-            ("Con pi&ugrave; corsi l&rsquo;ordine passa da una <b>trattativa diretta</b> su MePA: la "
-             "avvia la scuola verso Gruppo Spaggiari Parma indicando i codici e l&rsquo;importo "
-             "di questo preventivo; noi verifichiamo che l&rsquo;importo corrisponda e confermiamo la "
-             "quotazione. Lo sconto vale in trattativa diretta: con l&rsquo;ordine diretto (ODA) il "
-             "prezzo &egrave; quello di catalogo. Per domande: "
-             "<a href=\"mailto:%s\" style=\"color:%s\">%s</a>." % (MEPA, PETROLIO, MEPA)))
+    mepa = '<a href="mailto:%s" style="color:%s">%s</a>' % (MEPA, PETROLIO, MEPA)
+    if len(d["righe"]) == 1:
+        come = ("Per un singolo corso la Scuola pu&ograve; procedere con l&rsquo;<b>ordine "
+                "diretto (ODA)</b> su MePA, utilizzando il codice articolo indicato nel "
+                "preventivo.")
+    else:
+        come = ("Per l&rsquo;acquisto di pi&ugrave; corsi &egrave; prevista la <b>trattativa "
+                "diretta</b> su MePA, che la Scuola avvia nei confronti di Gruppo Spaggiari Parma "
+                "S.p.A. indicando i codici articolo e l&rsquo;importo riportati nel preventivo; "
+                "verificata la corrispondenza dell&rsquo;importo, confermiamo la quotazione.")
+        if d["sconto"]:
+            come += ("<br>Lo sconto si applica esclusivamente nella trattativa diretta; con "
+                     "l&rsquo;ordine diretto (ODA) resta valido il prezzo di catalogo.")
     return """<div style="font:15px/1.6 Arial,sans-serif;color:#3f5453;max-width:660px">
 <p>Gentile %(nome)s,</p>
-<p>in allegato il <b>preventivo n. %(numero)s</b> intestato a %(scuola)s, valido 30 giorni.</p>
+<p>Le inviamo in allegato il <b>preventivo n. %(numero)s</b> intestato a %(scuola)s, valido
+30 giorni dalla data di emissione.</p>
 <table style="border-collapse:collapse;width:100%%;font:14px/1.5 Arial,sans-serif;margin:18px 0">
 %(righe)s%(sconto)s
 <tr><td style="padding:12px;font-weight:700;color:%(p)s">Totale</td>
@@ -380,8 +391,11 @@ def corpo_email(d):
 </table>
 <p style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px">
 <b>Come si acquista</b><br>%(come)s<br>
-Importi <b>esenti IVA</b>, trattandosi di formazione rivolta alle istituzioni scolastiche.<br>
-Per procedere basta rispondere a questa email, oppure usare il pulsante nel preventivo.</p>
+Gli importi sono <b>esenti da IVA</b>, in quanto si tratta di attivit&agrave; formativa
+rivolta alle istituzioni scolastiche.</p>
+<p>Per qualsiasi chiarimento, il nostro ufficio MePA &egrave; a Sua disposizione: pu&ograve;
+rispondere a questa e-mail oppure scrivere a %(mepa)s.</p>
+<p>Cordiali saluti</p>
 <p style="margin:26px 0"><a href="%(link)s" style="background:%(o)s;color:%(p)s;
 text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;display:inline-block">
 APRI IL PREVENTIVO</a></p>
@@ -390,6 +404,7 @@ Via Bernini 22/A, 43126 Parma &middot; P.IVA 00150470342<br>
 Nicola de Cesare, Amministratore Delegato</p></div>""" % {
         "nome": d["nome"], "numero": d["numero"], "scuola": d["scuola"], "righe": righe,
         "sconto": sconto, "tot": euro(d["netto"]), "come": come, "link": d["link"],
+        "mepa": mepa,
         "p": PETROLIO, "o": ORO}
 
 
@@ -489,7 +504,8 @@ def lavora(inv, prova):
 
 
     prev_esistente = (figli(trattativa, "quotes") or [None])[0] if ripresa else None
-    note = (NOTE_UNO if len(righe) == 1 else NOTE_PIU) + PARITARIE
+    note = (NOTE_UNO if len(righe) == 1 else
+            NOTE_PIU + (NOTA_SCONTO if sconto else "") + NOTA_CONTATTO) + PARITARIE
     scadenza = int((datetime.datetime.now(datetime.timezone.utc)
                     + datetime.timedelta(days=30)).timestamp() * 1000)
     q = {"id": prev_esistente} if prev_esistente else hs("/crm/v3/objects/quotes", {"properties": {
@@ -560,7 +576,8 @@ def lavora(inv, prova):
         # il giro successivo riprende questa richiesta da qui
         print("  PDF non scaricato (%s): riprovo al prossimo giro" % type(e).__name__)
         return
-    testo = corpo_email({"nome": v.get("firstname") or "", "scuola": scuola,
+    testo = corpo_email({"nome": " ".join(x for x in (v.get("firstname"), v.get("lastname"))
+                                          if x).strip() or "Dirigente", "scuola": scuola,
                          "numero": dati["hs_quote_number"], "link": dati["hs_quote_link"],
                          "righe": righe, "lordo": lordo, "netto": netto, "sconto": sconto})
     try:
