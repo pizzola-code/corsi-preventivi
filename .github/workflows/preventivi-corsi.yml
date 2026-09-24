@@ -41,6 +41,8 @@ jobs:
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
           # SMS di avviso sul cellulare del modulo (Mitto, mittente "Spaggiari")
           MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
+          MITTO_CHAT_KEY: ${{ secrets.MITTO_CHAT_KEY }}
+          MITTO_TRAFFIC_WA: ${{ secrets.MITTO_TRAFFIC_WA }}
         run: |
           python preventivi_corsi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 

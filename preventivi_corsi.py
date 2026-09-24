@@ -286,6 +286,75 @@ def invia_sms(msisdn, testo):
     return "accettato" if esito.get("responseCode") == 0 else "rifiutato: %s" % esito
 
 
+WA_MODELLO = "preventivo_corsi_v1"
+
+
+def invia_whatsapp(msisdn, nome, numero, link):
+    """Conferma su WhatsApp, solo a chi l'ha chiesta. Modello di servizio
+    approvato da Meta: nome e numero del preventivo nel testo, e tre pulsanti.
+    "Apri il preventivo" porta alla pagina del preventivo (il pezzo finale del
+    collegamento e' la variabile); gli altri due tornano a noi come risposta e
+    li gestisce il ricevitore whatsapp-in. Restituisce (riuscito, esito)."""
+    chiave = os.environ.get("MITTO_CHAT_KEY")
+    traffico = os.environ.get("MITTO_TRAFFIC_WA")
+    if not chiave or not traffico:
+        return False, "chiavi WhatsApp assenti"
+    intest = {"X-Mitto-API-Key": chiave, "Content-Type": "application/json",
+              "Accept": "application/json"}
+    # finche' Meta non approva il modello si resta sull'SMS
+    elenco = json.loads(urllib.request.urlopen(urllib.request.Request(
+        "https://messaging.mittoapi.com/api/v1/trafficAccounts/%s/WhatsAppTemplates" % traffico,
+        headers=intest), timeout=30).read() or b"[]")
+    if not any(t.get("name") == WA_MODELLO and t.get("status") == "APPROVED"
+               for t in (elenco if isinstance(elenco, list) else [])):
+        return False, "modello non ancora approvato"
+    slug = link.rstrip("/").rsplit("/", 1)[-1]
+    corpo = {"destination": "+" + msisdn, "trafficAccountId": traffico,
+             "whatsapp": {"type": "template", "template": {
+                 "name": WA_MODELLO,
+                 # la lingua vuole la forma oggetto: con la stringa Mitto accetta
+                 # e poi fallisce con "Can't get template language code"
+                 "language": {"code": "it"},
+                 "components": [
+                     {"type": "body", "parameters": [
+                         {"type": "text", "text": nome or "Dirigente"},
+                         {"type": "text", "text": numero}]},
+                     {"type": "button", "sub_type": "url", "index": "0",
+                      "parameters": [{"type": "text", "text": slug}]}]}}}
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(
+        "https://messaging.mittoapi.com/api/v1.1/Messages/send",
+        data=json.dumps(corpo).encode(), method="POST", headers=intest),
+        timeout=30).read() or b"{}")
+    ident = r.get("id") or r.get("messageId")
+    if not ident:
+        return False, "rifiutato: %s" % str(r.get("errors") or r)[:120]
+    # l'accettazione non e' la consegna: lo stato vero arriva poco dopo
+    time.sleep(5)
+    st = json.loads(urllib.request.urlopen(urllib.request.Request(
+        "https://messaging.mittoapi.com/api/v1.1/Messages/%s" % ident, headers=intest),
+        timeout=30).read() or b"{}")
+    esito = str(st.get("deliveryStatus") or "sconosciuto")
+    return esito != "Failure", esito + (" - " + st["description"] if st.get("description") else "")
+
+
+def vuole_whatsapp(v, contatto):
+    """Consenso dalla casella del modulo di questa richiesta, oppure gia' dato
+    in passato (per esempio da un pulsante WhatsApp degli eventi). Se arriva
+    dalla casella, sul contatto si segnano data e provenienza."""
+    if str(v.get("consenso_whatsapp", "")).lower() == "true":
+        if contatto:
+            hs("/crm/v3/objects/contacts/%s" % contatto, {"properties": {
+                "consenso_whatsapp": "true",
+                "consenso_whatsapp_data": datetime.datetime.now(datetime.timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "consenso_whatsapp_origine": "modulo corsi di formazione"}}, "PATCH")
+        return True
+    if not contatto:
+        return False
+    return str(hs("/crm/v3/objects/contacts/%s?properties=consenso_whatsapp" % contatto)
+               .get("properties", {}).get("consenso_whatsapp")).lower() == "true"
+
+
 def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola):
     """L'attivita' di richiamata la crea HubSpot all'invio del modulo (flusso
     4929128670): al referente della scuola se c'e', altrimenti sempre a Emma.
@@ -634,16 +703,26 @@ def lavora(inv, prova):
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
     print("  preventivo %s inviato a %s (copia a %s) da %s"
           % (dati["hs_quote_number"], v["email"], MEPA, da))
-    # SMS di avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
-    # arrivato per e-mail. Se il numero e' un fisso o l'invio non riesce, pazienza:
-    # l'e-mail e' gia' partita.
+    # Avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
+    # arrivato per e-mail. WhatsApp a chi l'ha chiesto, altrimenti SMS; se
+    # WhatsApp non riesce si ripiega sull'SMS. Se il numero e' un fisso o
+    # l'invio non riesce, pazienza: l'e-mail e' gia' partita.
     try:
         msisdn = numero_cellulare(v.get("mobilephone"))
+        nome_sms = " ".join(x for x in (v.get("firstname"), v.get("lastname")) if x).strip()
+        wa_ok = False
         if msisdn:
-            nome_sms = " ".join(x for x in (v.get("firstname"), v.get("lastname")) if x).strip()
+            try:
+                if vuole_whatsapp(v, contatto):
+                    wa_ok, esito_wa = invia_whatsapp(msisdn, nome_sms, dati["hs_quote_number"],
+                                                     dati["hs_quote_link"])
+                    print("  WhatsApp a +%s...%s: %s" % (msisdn[:4], msisdn[-2:], esito_wa))
+            except Exception as e:
+                print("  WhatsApp non inviato (%s): ripiego sull'SMS" % type(e).__name__)
+        if msisdn and not wa_ok:
             esito = invia_sms(msisdn, testo_sms(nome_sms, dati["hs_quote_number"]))
             print("  SMS a +%s...%s: %s" % (msisdn[:4], msisdn[-2:], esito))
-        else:
+        elif not msisdn:
             print("  SMS non inviato: il numero del modulo non e' un cellulare")
     except Exception as e:
         print("  SMS non inviato (%s)" % type(e).__name__)
