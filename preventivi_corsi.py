@@ -386,6 +386,7 @@ def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola)
     cosi' chi ha la trattativa ha anche la telefonata da fare."""
     if not contatto:
         return
+    trovate = 0
     a = hs("/crm/v4/objects/contacts/%s/associations/tasks?limit=100" % contatto)
     for x in a.get("results", []):
         t = hs("/crm/v3/objects/tasks/%s?properties=hs_task_subject,hubspot_owner_id,"
@@ -408,6 +409,25 @@ def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola)
                {"properties": {"hubspot_owner_id": responsabile}}, "PATCH")
             print("  richiamata passata a %s, come la trattativa" % responsabile)
         lega("tasks", x["toObjectId"], "deals", trattativa)
+        trovate += 1
+    # Andrea 25/9/2026: il task lo crea il motore, gia' assegnato all'agente di zona.
+    # Il flusso 4929128670 lo assegnava al proprietario del CONTATTO (anche
+    # l'assistenza) prima che qui venisse spostato: la notifica era gia' partita.
+    # Finche' il flusso non viene ripulito dall'interfaccia, se il suo task c'e' si
+    # riusa (sopra); se non c'e' lo crea il motore, solo quando c'e' un agente.
+    if not trovate and responsabile:
+        domani = (datetime.datetime.now(datetime.timezone.utc)
+                  + datetime.timedelta(days=1)).strftime("%Y-%m-%dT05:00:00Z")
+        n = hs("/crm/v3/objects/tasks", {"properties": {
+            "hs_task_subject": "Preventivo corsi: %s" % scuola,
+            "hs_task_body": "Richiesta dal catalogo corsi: il preventivo e' gia' partito verso "
+                            "la scuola. Dettagli nella trattativa collegata.",
+            "hs_task_type": "CALL", "hs_task_priority": "HIGH", "hs_task_status": "NOT_STARTED",
+            "hubspot_owner_id": responsabile, "hs_timestamp": domani}}, "POST")
+        if n.get("id"):
+            lega("tasks", n["id"], "deals", trattativa)
+            lega("tasks", n["id"], "contacts", contatto)
+            print("  richiamata creata per l'agente %s" % responsabile)
 
 
 def stato_richiesta(chiave):
