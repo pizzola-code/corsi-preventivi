@@ -238,18 +238,34 @@ def trattativa_dell_invio(submitted_at):
     return (r.get("results") or [None])[0]
 
 
-def proprietario_per(referente):
-    """Il referente commerciale della scuola; senza, chi dei due ne ha meno."""
-    if referente:
-        return referente
-    carico = {}
-    for oid, _ in VENDITORI:
-        r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
-            {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE},
-            {"propertyName": "hubspot_owner_id", "operator": "EQ", "value": oid}]}],
-            "limit": 1}, "POST")
-        carico[oid] = r.get("total", 0)
-    return min(VENDITORI, key=lambda x: (carico.get(x[0], 0), VENDITORI.index(x)))[0]
+TEAM_AGENTI = "Sales - Agenti"
+
+
+def agente_di_zona(azienda, meccanografico):
+    """Andrea 25/9/2026: trattativa e task vanno SOLO agli agenti. Prima si usava il
+    proprietario del CONTATTO (che puo' essere l'assistenza: l'IISS Galilei di Bolzano
+    e' finito a Mattia Ciabattoni, Software Assistance) e, senza, il turno Emma/Laura.
+    Ora: il proprietario della SCUOLA (azienda collegata, oppure trovata dal codice
+    meccanografico), e solo se sta nel team Sales - Agenti. Altrimenti None."""
+    candidati = []
+    if azienda:
+        candidati.append(str(azienda))
+    mecc = (meccanografico or "").strip().upper()
+    if mecc:
+        r = hs("/crm/v3/objects/companies/search", {"filterGroups": [{"filters": [
+            {"propertyName": "name", "operator": "CONTAINS_TOKEN", "value": mecc}]}],
+            "properties": ["name"], "limit": 5}, "POST")
+        candidati += [x["id"] for x in r.get("results", [])
+                      if (x["properties"].get("name") or "").upper().startswith(mecc)]
+    for cid in candidati:
+        s = hs("/crm/v3/objects/companies/%s?properties=hubspot_owner_id" % cid)
+        oid = (s.get("properties") or {}).get("hubspot_owner_id")
+        if not oid:
+            continue
+        o = hs("/crm/v3/owners/%s?idProperty=id" % oid)
+        if any(x.get("name") == TEAM_AGENTI for x in o.get("teams", [])):
+            return oid, cid
+    return None, (candidati[0] if candidati else None)
 
 
 def numero_cellulare(grezzo):
@@ -563,6 +579,9 @@ def lavora(inv, prova):
     contatto = cerca["results"][0]["id"] if cerca.get("results") else None
     azienda = dati_contatto.get("associatedcompanyid")
     destinatario = dati_scuola(v, azienda, dati_contatto)
+    agente, scuola_id = agente_di_zona(
+        azienda, v.get("codice_meccanografico") or dati_contatto.get("codice_meccanografico"))
+    print("  agente di zona: %s" % (agente or "NESSUNO - trattativa senza proprietario"))
 
     # se corsi-trattative e' passato prima, la trattativa c'e' gia': si riusa
     if not ripresa:
@@ -590,8 +609,7 @@ def lavora(inv, prova):
         d = hs("/crm/v3/objects/deals", {"properties": {
             "dealname": ("Corsi %s - %s" % (numero, scuola))[:200], "pipeline": PIPELINE,
             "dealstage": STADIO_RICHIESTA, "amount": totale,
-            "hubspot_owner_id": proprietario_per(
-                (dati_contatto.get("hubspot_owner_id") or "").strip()),
+            "hubspot_owner_id": agente or "",
             "description": corpo[:60000],
             MARCATORE: str(inv["submittedAt"]), "chiave_richiesta_corsi": chiave}}, "POST")
         if "_err" in d:
@@ -601,7 +619,7 @@ def lavora(inv, prova):
 
     # il preventivo e' di chi segue la trattativa, chiunque l'abbia aperta
     responsabile = (hs("/crm/v3/objects/deals/%s?properties=hubspot_owner_id" % trattativa)
-                    .get("properties", {}).get("hubspot_owner_id") or PROPRIETARIO)
+                    .get("properties", {}).get("hubspot_owner_id") or "")
 
     ids = figli(trattativa, "line_items") if ripresa else []
     for r in (righe if not ids else []):
@@ -655,9 +673,11 @@ def lavora(inv, prova):
     if contatto:
         lega("quotes", prev, "contacts", contatto)
         lega("deals", trattativa, "contacts", contatto)
-        if azienda:
-            lega("quotes", prev, "companies", azienda)
-            lega("deals", trattativa, "companies", azienda)
+        # senza azienda sul contatto vale la scuola trovata dal meccanografico:
+        # l'agente deve ritrovare la trattativa sulla scheda della sua scuola
+        if azienda or scuola_id:
+            lega("quotes", prev, "companies", azienda or scuola_id)
+            lega("deals", trattativa, "companies", azienda or scuola_id)
 
     # un preventivo gia' pubblicato HubSpot lo considera chiuso: ripubblicarlo
     # darebbe errore, quindi in ripresa si pubblica solo cio' che e' ancora bozza
