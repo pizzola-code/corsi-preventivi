@@ -239,6 +239,22 @@ def trattativa_dell_invio(submitted_at):
 
 
 TEAM_AGENTI = "Sales - Agenti"
+# Andrea 25/9/2026: senza agente di zona, trattativa e task vanno a turno a loro (chi
+# ne ha meno aperti); sono anche gli unici che ricevono la notifica del modulo.
+RIPIEGO = [("30267680", "Camilla Maestri"), ("31296437", "Stefano Benassi"),
+           ("78283682", "Alessandro Tonelli")]
+
+
+def ripiego():
+    carico = {}
+    for oid, _ in RIPIEGO:
+        r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+            {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE},
+            {"propertyName": "hubspot_owner_id", "operator": "EQ", "value": oid},
+            {"propertyName": "hs_is_closed", "operator": "EQ", "value": "false"}]}],
+            "limit": 1}, "POST")
+        carico[oid] = r.get("total", 0)
+    return min(RIPIEGO, key=lambda x: (carico.get(x[0], 0), RIPIEGO.index(x)))[0]
 
 
 def agente_di_zona(azienda, meccanografico):
@@ -601,7 +617,11 @@ def lavora(inv, prova):
     destinatario = dati_scuola(v, azienda, dati_contatto)
     agente, scuola_id = agente_di_zona(
         azienda, v.get("codice_meccanografico") or dati_contatto.get("codice_meccanografico"))
-    print("  agente di zona: %s" % (agente or "NESSUNO - trattativa senza proprietario"))
+    if not agente:
+        agente = ripiego()
+        print("  nessun agente di zona: a turno a %s" % agente)
+    else:
+        print("  agente di zona: %s" % agente)
 
     # se corsi-trattative e' passato prima, la trattativa c'e' gia': si riusa
     if not ripresa:
