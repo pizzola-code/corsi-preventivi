@@ -394,6 +394,38 @@ def vuole_whatsapp(v, contatto):
                .get("properties", {}).get("consenso_whatsapp")).lower() == "true"
 
 
+CONTROLLO = "pizzola@spaggiari.eu"
+
+
+def avviso_controllo(scuola, responsabile, motivo, trattativa, n_corsi, netto):
+    """Andrea 25/9/2026: "i task devono essere notificati anche a me, perche' devo
+    controllare quello che sta succedendo". Una riga per richiesta: scuola, a chi e'
+    andato il task e perche', link alla trattativa."""
+    utente = os.environ.get("SMTP_CORSI_USER")
+    chiave = os.environ.get("SMTP_CORSI_PASS")
+    if not (utente and chiave):
+        print("  avviso di controllo: credenziali SMTP assenti")
+        return
+    nome = "nessuno"
+    if responsabile:
+        o = hs("/crm/v3/owners/%s?idProperty=id" % responsabile)
+        nome = ("%s %s" % (o.get("firstName") or "", o.get("lastName") or "")).strip() or responsabile
+    link = "https://app-eu1.hubspot.com/contacts/144406271/record/0-3/%s" % trattativa
+    m = EmailMessage()
+    m["From"] = "Spaggiari <%s>" % MITTENTE
+    m["To"] = CONTROLLO
+    m["Subject"] = "Corsi: %s -> %s" % (scuola, nome)
+    m.set_content("Richiesta preventivo corsi da %s (%d corsi, %s).\n\n"
+                  "Trattativa e task assegnati a: %s\nPerche': %s\n\nTrattativa: %s\n"
+                  % (scuola, n_corsi, euro(netto), nome, motivo, link))
+    s = smtplib.SMTP(SMTP_HOST, SMTP_PORTA, timeout=60)
+    s.starttls(context=ssl.create_default_context())
+    s.login(utente, chiave)
+    s.send_message(m)
+    s.quit()
+    print("  avviso di controllo inviato a %s" % CONTROLLO)
+
+
 def allinea_richiamata(contatto, trattativa, responsabile, submitted_at, scuola):
     """L'attivita' di richiamata la crea HubSpot all'invio del modulo (flusso
     4929128670): al referente della scuola se c'e', altrimenti sempre a Emma.
@@ -619,8 +651,10 @@ def lavora(inv, prova):
         azienda, v.get("codice_meccanografico") or dati_contatto.get("codice_meccanografico"))
     if not agente:
         agente = ripiego()
+        motivo = "scuola senza agente di zona attivo: a turno"
         print("  nessun agente di zona: a turno a %s" % agente)
     else:
+        motivo = "agente di zona della scuola"
         print("  agente di zona: %s" % agente)
 
     # se corsi-trattative e' passato prima, la trattativa c'e' gia': si riusa
@@ -799,6 +833,10 @@ def lavora(inv, prova):
         allinea_richiamata(contatto, trattativa, responsabile, inv["submittedAt"], scuola)
     except Exception as e:            # mai far fallire un invio gia' riuscito
         print("  richiamata non allineata (%s)" % type(e).__name__)
+    try:
+        avviso_controllo(scuola, responsabile, motivo, trattativa, len(righe), netto)
+    except Exception as e:            # l'avviso non deve mai bloccare il resto
+        print("  avviso di controllo non inviato (%s)" % type(e).__name__)
 
 
 def main():
