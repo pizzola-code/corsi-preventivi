@@ -1,0 +1,23 @@
+name: report-corsi
+# Andrea 27/9/2026: panoramica quotidiana delle richieste di preventivo dal catalogo
+# corsi (pipeline Formazione), via mail a pizzola@spaggiari.eu.
+# 05:30 UTC = 07:30 a Roma con l'ora legale; dal 25/10 esce alle 06:30.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 5 * * *'
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Panoramica richieste corsi
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: python report_corsi.py
