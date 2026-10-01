@@ -57,6 +57,13 @@ jobs:
         run: |
           python preventivi_comfort.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 
+      # Corsi in diretta: rimette la data sulle iscrizioni (hapily la svuota) prima che parta la conferma
+      - name: Corsi -> data sulle iscrizioni
+        if: always()
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+        run: python iscrizioni_corsi.py
+
       # Avviso interno su ogni evento nuovo (Andrea, 1/10/2026): Pari, Bertozzi e Dalla Rizza.
       - name: Eventi nuovi -> avviso interno
         if: always()
