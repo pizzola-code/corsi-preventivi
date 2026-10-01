@@ -57,6 +57,15 @@ jobs:
         run: |
           python preventivi_comfort.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 
+      # Avviso interno su ogni evento nuovo (Andrea, 1/10/2026): Pari, Bertozzi e Dalla Rizza.
+      - name: Eventi nuovi -> avviso interno
+        if: always()
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: python avvisa_eventi.py
+
       # Il registro degli invii va salvato subito: e' cio' che impedisce di
       # rimandare un preventivo se la trattativa viene cancellata. I giri sono
       # in fila (concurrency), quindi non si pestano.
@@ -65,10 +74,10 @@ jobs:
         # registrato comunque, o il giro dopo potrebbe rifarlo
         if: always()
         run: |
-          if [ -n "$(git status --porcelain inviati.txt inviati_comfort.txt)" ]; then
+          if [ -n "$(git status --porcelain inviati.txt inviati_comfort.txt avvisati_eventi.txt)" ]; then
             git config user.name "motore-preventivi"
             git config user.email "no_reply@spaggiari.eu"
-            git add inviati.txt inviati_comfort.txt 2>/dev/null || git add inviati.txt
+            git add inviati.txt inviati_comfort.txt avvisati_eventi.txt 2>/dev/null || git add inviati.txt
             git commit -m "registro: nuovi preventivi inviati"
             for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
           fi
