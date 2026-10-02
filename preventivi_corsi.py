@@ -165,6 +165,15 @@ def lega(da, id_da, a, id_a):
     return hs("/crm/v4/objects/%s/%s/associations/default/%s/%s" % (da, id_da, a, id_a), {}, "PUT")
 
 
+def mascherato(x):
+    """Nei log (leggibili da chiunque, il repository e' pubblico) niente indirizzi, nomi di persone o di scuole."""
+    x = str(x or "")
+    if "@" in x:
+        n, d = x.split("@", 1)
+        return n[:1] + "***@" + d
+    return x[:1] + "***" if x else "-"
+
+
 def euro(n):
     return ("%.2f" % n).replace(".", ",") + " €"
 
@@ -622,7 +631,7 @@ def lavora(inv, prova):
     # motore le riveda come nuove, e senza toccare la soglia.
     # parola intera: "Provaglio d'Iseo" e' un comune con scuole vere
     if re.match(r"PROVA\b", scuola.upper()):
-        print("  salto la prova di %s" % scuola)
+        print("  salto una prova")
         return
     stato, ripresa = stato_richiesta(chiave)
     if stato == "fatta":
@@ -805,7 +814,7 @@ def lavora(inv, prova):
     if contatto:
         hs("/crm/v3/objects/contacts/%s" % contatto,
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
-    print("  preventivo %s inviato a %s da %s" % (dati["hs_quote_number"], v["email"], da))
+    print("  preventivo %s inviato a %s da %s" % (dati["hs_quote_number"], mascherato(v["email"]), da))
     # Avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
     # arrivato per e-mail. WhatsApp a chi l'ha chiesto, altrimenti SMS; se
     # WhatsApp non riesce si ripiega sull'SMS. Se il numero e' un fisso o

@@ -329,7 +329,7 @@ def lavora(inv, prova):
     registra(chiave)
     ora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     hs("/crm/v3/objects/deals/%s" % trattativa, {"properties": {"dealstage": STADIO_EMESSO, "preventivo_inviato_il": ora}}, "PATCH")
-    print("  preventivo %s mandato a %s%s" % (dati["hs_quote_number"], a, " (cc %s)" % cc if cc else ""))
+    print("  preventivo %s mandato a %s%s" % (dati["hs_quote_number"], C.mascherato(a), " (cc)" if cc else ""))
 
     # il task di richiamata per l'agente: HubSpot lo notifica a chi lo riceve
     if responsabile:
