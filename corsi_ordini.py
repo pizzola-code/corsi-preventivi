@@ -117,6 +117,29 @@ def utc(data, ora):
     return datetime.datetime(a, m, g, h - (2 if legale else 1), mi, tzinfo=datetime.timezone.utc)
 
 
+def relatori_da_landing(voce):
+    """I relatori del corso come li mostra la landing /corsi-formazione (gia' collegati a hapily): fa fede la pagina.
+    Se la pagina non risponde si usa il campo `relatori` del palinsesto."""
+    try:
+        import urllib.request
+        h = urllib.request.urlopen("https://www.spaggiari.eu/corsi-formazione", timeout=30).read().decode("utf-8")
+        for m in re.finditer(r'<script type="application/ld\+json">(.*?)</script>', h, re.S):
+            try:
+                j = json.loads(m.group(1))
+            except Exception:
+                continue
+            if isinstance(j, dict) and j.get("@type") == "ItemList":
+                for it in j["itemListElement"]:
+                    ci = (it.get("item") or it).get("hasCourseInstance") or {}
+                    if (ci.get("startDate") or "").startswith("%sT%s" % (voce["data"], voce["inizio"])):
+                        nomi = [x.get("name") for x in ci.get("instructor", []) if x.get("name")]
+                        if nomi:
+                            return nomi
+    except Exception:
+        pass
+    return voce.get("relatori", [])
+
+
 def evento_per(base, crea, prova):
     """(id, proprieta') dell'evento del corso; lo crea dal palinsesto se manca. None se non si puo'."""
     voce = next((x for x in palinsesto() if x["base"] == base), None)
@@ -147,7 +170,7 @@ def evento_per(base, crea, prova):
     n = C.hs("/crm/v3/objects/%s" % EV, {"properties": props}, "POST")
     props["id"] = n["id"]
     # i relatori del corso (oggetto «hapily speaker»), dal palinsesto: da loro il link di avvio un'ora prima
-    for nome in voce.get("relatori", []):
+    for nome in relatori_da_landing(voce):
         sp = C.hs("/crm/v3/objects/2-144750696/search", {"filterGroups": [{"filters": [
             {"propertyName": "name", "operator": "EQ", "value": nome}]}], "properties": ["name"], "limit": 1}, "POST").get("results", [])
         if sp:
