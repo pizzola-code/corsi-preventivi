@@ -42,7 +42,8 @@ EV, REG = "2-143900361", "2-143900355"
 EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio da API)»
 PAGINA = "https://www.spaggiari.eu/indica-partecipanti-corso"
 CORSO = re.compile(r"^WBRELE?([A-Z0-9]+)-(1|3|I)$")
-CC_FISSI = ["malerba@spaggiari.eu"]
+CC_FISSI = []                              # in copia visibile solo l'agente di zona
+BCC = ["pizzola@spaggiari.eu", "malerba@spaggiari.eu", "primiceri@spaggiari.eu", "bertozzi@spaggiari.eu", "maestri@spaggiari.eu"]
 AVVISO_A = ["pizzola@spaggiari.eu", "malerba@spaggiari.eu"]
 CHIUSURA_ORE = 4
 REGISTRO = os.path.join(QUI, "ordini_corsi_gestiti.txt")
@@ -208,7 +209,7 @@ def email_agente(deal_id):
 
 # ---------------------------------------------------------------- invio da HubSpot
 def invia(a, cc, oggetto_dati):
-    corpo = {"emailId": EMAIL_ID, "message": {"to": a[0], "cc": [x for x in (a[1:] + cc) if x]},
+    corpo = {"emailId": EMAIL_ID, "message": {"to": a[0], "cc": [x for x in (a[1:] + cc) if x], "bcc": BCC},
              "customProperties": oggetto_dati}
     return C.hs("/marketing/v3/transactional/single-email/send", corpo, "POST")
 
@@ -324,14 +325,14 @@ def lavora(o, auto, prova, destinatari_forzati=None):
                 "Per inviare: <code>python corsi_ordini.py --ordine %s --a mail1,mail2 --invia</code> (o scrivi ad Andrea Pizzola)." % o["num"]])
             segna(chiave_ordine + "|avvisato-destinatari")
         return
-    print("     destinatari: %s (%s) · cc: %s" % (", ".join(e for e, _ in dest), motivo, ", ".join(cc)))
+    print("     destinatari: %s (%s) · cc: %s · ccn: %s" % (", ".join(e for e, _ in dest), motivo, ", ".join(cc) or "-", ", ".join(BCC)))
     if prova:
         return
     if not auto:
         if chiave_ordine + "|pronto" not in gia:
             avviso_interno("Ordine di corso pronto per l'invio: %s" % o["num"], [
                 "L'ordine <b>%s</b> di %s riguarda il corso «%s» (%s)." % (o["num"], dati["scuola"], dati["corso"], dati["quando"]),
-                "Destinatari previsti: %s (%s). In copia: %s." % (", ".join(e for e, _ in dest), motivo, ", ".join(cc)),
+                "Destinatari previsti: %s (%s). In copia: %s. In copia nascosta: voi." % (", ".join(e for e, _ in dest), motivo, ", ".join(cc) or "nessuno"),
                 "L'invio automatico e' spento: per mandare l'e-mail dal portale HubSpot dai l'ok ad Andrea Pizzola."])
             segna(chiave_ordine + "|pronto")
         return
