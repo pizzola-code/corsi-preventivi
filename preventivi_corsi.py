@@ -639,9 +639,8 @@ def lavora(inv, prova):
     sconto = int(v.get("sconto_corsi") or 0)
     lordo = sum(r["prezzo"] for r in righe)
     netto = round(lordo * (100 - sconto) / 100, 2)
-    print("\n%s  %s <%s> - %s - %d corsi, %s"
-          % (quando.strftime("%d/%m %H:%M"), v.get("firstname"), v.get("email"), scuola,
-             len(righe), euro(netto)))
+    print("\n%s  richiesta %s - %d corsi, %s"
+          % (quando.strftime("%d/%m %H:%M"), mascherato(v.get("email")), len(righe), euro(netto)))
     if prova:
         print("  --prova: mi fermo qui")
         return

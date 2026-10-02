@@ -189,8 +189,8 @@ def lavora(inv, prova):
         return
     netto = round(sum(r["qta"] * r["prezzo"] for r in righe), 2)
     pezzi = sum(r["qta"] for r in righe)
-    print("\n%s  %s <%s> - %s - %d pezzi, %s%s" % (quando.strftime("%d/%m %H:%M"), v.get("firstname"), v.get("email"),
-                                                scuola, pezzi, euro(netto), "  [PROVA]" if di_prova else ""))
+    print("\n%s  richiesta %s - %d pezzi, %s%s" % (quando.strftime("%d/%m %H:%M"), C.mascherato(v.get("email")),
+                                                pezzi, euro(netto), "  [PROVA]" if di_prova else ""))
     if prova:
         print("  --prova: mi fermo qui")
         return
