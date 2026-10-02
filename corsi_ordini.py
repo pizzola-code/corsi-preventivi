@@ -340,8 +340,9 @@ def dati_email(voci):
     d = {"corso": primo["corso"], "scuola": pulito(primo["azienda"].get("name")), "quando": primo["quando"],
          "chiusura": primo["chiusura"], "link": primo["link"],
          "oggetto": ("Corso «%s»: indica chi partecipa" % primo["corso"]) if len(voci) == 1 else "I tuoi corsi in diretta: indica chi partecipa"}
-    for i, v in enumerate(voci[1:9], start=2):
-        d["corso_%d" % i], d["quando_%d" % i], d["link_%d" % i] = v["corso"], v["quando"], v["link"]
+    for i in range(2, 9):      # il modello vuole TUTTE le proprieta' in ogni invio: quelle senza corso vanno vuote
+        v = voci[i - 1] if i - 1 < len(voci) else None
+        d["corso_%d" % i], d["quando_%d" % i], d["link_%d" % i] = (v["corso"], v["quando"], v["link"]) if v else ("", "", "")
     return d
 
 
