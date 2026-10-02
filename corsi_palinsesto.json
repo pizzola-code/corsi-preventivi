@@ -73,8 +73,7 @@
   "inizio": "11:00",
   "fine": "13:00",
   "relatori": [
-   "Gianluca Frascari",
-   "Ivan Cirone"
+   "Gianluca Frascari"
   ]
  },
  {
@@ -161,7 +160,9 @@
   "data": "2026-10-09",
   "inizio": "14:00",
   "fine": "16:00",
-  "relatori": []
+  "relatori": [
+   "Riccardo Remagni"
+  ]
  },
  {
   "codice": "WBRELEPVWO",
@@ -170,7 +171,9 @@
   "data": "2026-10-19",
   "inizio": "14:30",
   "fine": "16:30",
-  "relatori": []
+  "relatori": [
+   "Jessica Bullara"
+  ]
  },
  {
   "codice": "WBRELESLSEG",
