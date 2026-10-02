@@ -15,7 +15,9 @@ Uso:  python avvisa_eventi.py            manda gli avvisi dovuti
 import datetime
 import html
 import io
+import json
 import os
+import re
 import sys
 import smtplib
 import ssl
@@ -33,6 +35,21 @@ DA_QUANDO = datetime.datetime(2026, 10, 1, 21, 0, tzinfo=datetime.timezone.utc)
 ATTESA_LINK_MIN = 30
 REGISTRO = os.path.join(QUI, "avvisati_eventi.txt")
 PORTALE = "144406271"
+
+
+def formatore(p):
+    """(nome, [email]) del formatore se l'evento e' un corso del palinsesto, altrimenti (None, [])"""
+    if not re.match(r"^\s*corso\s*\|", p.get("name") or "", re.I):
+        return None, []
+    m = re.match(r"^CF-([A-Z0-9]+)-\d{4}$", (p.get("external_id") or "").upper())
+    try:
+        tab = json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))
+    except Exception:
+        return None, []
+    v = next((x for x in tab if m and x["base"] == m.group(1)), None)
+    if not v:
+        return None, []
+    return v.get("formatore"), [e for e in (v.get("formatore_email") or "").split(",") if e]
 
 
 def registro():
@@ -56,14 +73,14 @@ def quando(iso):
     return "%s %d %s %d, ore %02d:%02d" % (giorni[l.weekday()], l.day, mesi[l.month - 1], l.year, l.hour, l.minute)
 
 
-def manda(oggetto, corpo_html):
+def manda(oggetto, corpo_html, destinatari=None):
     utente = os.environ.get("SMTP_CORSI_USER")
     chiave = os.environ.get("SMTP_CORSI_PASS")
     if not (utente and chiave):
         raise RuntimeError("credenziali SMTP assenti")
     m = EmailMessage()
     m["From"] = "Spaggiari <%s>" % C.MITTENTE
-    m["To"] = ", ".join(DESTINATARI)
+    m["To"] = ", ".join(destinatari or DESTINATARI)
     m["Subject"] = oggetto
     m.set_content("Nuovo evento nel portale: il dettaglio e' in questo messaggio, serve un lettore di posta HTML.")
     m.add_alternative(corpo_html, subtype="html")
@@ -93,12 +110,17 @@ def corpo(p, eid):
         riga("Pubblicato sul sito", pubblicato),
         riga("Collegamento", link_html),
         riga("Codice", html.escape(p.get("external_id") or "-")),
+        riga("Formatore", html.escape(formatore(p)[0] or "-")) if formatore(p)[0] else "",
         riga("Scheda", '<a href="%s">apri in HubSpot</a>' % record),
     ])
+    nota = ""
+    if formatore(p)[0]:
+        nota = ("<p>Corso riservato a chi ha acquistato la licenza. Le scuole indicano i partecipanti e ognuno riceve il proprio link. "
+                "Chi lo conduce riceve il link per avviare la diretta circa un'ora prima dell'inizio.</p>")
     return ("<div style='font-family:Arial,sans-serif;font-size:15px;color:#0E2A4D'>"
             "<p>È stato creato un nuovo evento nel portale.</p>"
             "<table style='border-collapse:collapse;font-size:15px'>%s</table>"
-            "<p style='color:#51606E;font-size:13px'>Messaggio automatico di Spaggiari.</p></div>" % righe)
+            "%s<p style='color:#51606E;font-size:13px'>Messaggio automatico di Spaggiari.</p></div>" % (righe, nota))
 
 
 def main():
@@ -124,7 +146,8 @@ def main():
         print("  AVVISO: %s" % oggetto)
         if prova:
             continue
-        manda(oggetto, corpo(p, x["id"]))
+        _, mail_f = formatore(p)
+        manda(oggetto, corpo(p, x["id"]), DESTINATARI + [e for e in mail_f if e not in DESTINATARI])
         with io.open(REGISTRO, "a", encoding="utf-8") as f:
             f.write(x["id"] + "\n")
 

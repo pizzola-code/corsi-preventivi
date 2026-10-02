@@ -1,0 +1,222 @@
+[
+ {
+  "codice": "WBRELEBILC",
+  "base": "BILC",
+  "titolo": "Bilancio 2.0: continuità e primi passi",
+  "data": "2026-10-07",
+  "inizio": "11:00",
+  "fine": "13:00",
+  "formatore": "Luigi Bendini",
+  "formatore_email": "bendini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELBILPA",
+  "base": "BILPA",
+  "titolo": "Bilancio 2.0: Tutto ciò che serve sapere per predisporre il Programma Annuale 2027",
+  "data": "2026-11-05",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Luigi Bendini",
+  "formatore_email": "bendini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELBILF",
+  "base": "BILF",
+  "titolo": "Bilancio 2.0: Le attività operative per completare il 2026 e avviare correttamente il 2027",
+  "data": "2026-12-11",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Luigi Bendini",
+  "formatore_email": "bendini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELEINS",
+  "base": "INS",
+  "titolo": "Inventario: la gestione del patrimonio della scuola con Inventario Spaggiari",
+  "data": "2026-11-13",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Franco De Gaspari",
+  "formatore_email": "degaspari@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESDP",
+  "base": "SDP",
+  "titolo": "Fondamenti di protocollazione informatica e gestione documentale: le buone norme di standardizzazione",
+  "data": "2026-10-15",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Franco De Gaspari",
+  "formatore_email": "degaspari@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESDAT",
+  "base": "SDAT",
+  "titolo": "Pubblicare consapevolmente: Albo, Trasparenza e Comunicati",
+  "data": "2026-11-16",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Serena Bassi",
+  "formatore_email": "bassi@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELEVV",
+  "base": "VV",
+  "titolo": "Ver.Di & Vo.Ce — Gestisci riunioni e votazioni scolastiche in un unico flusso digitale",
+  "data": "2026-10-16",
+  "inizio": "11:00",
+  "fine": "13:00",
+  "formatore": "Gianluca Frascari e Ivan Cirone",
+  "formatore_email": "frascari@spaggiari.eu,cirone@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESFT",
+  "base": "SFT",
+  "titolo": "Scuola & Territorio — La piattaforma che unisce scuola, aziende e mondo del lavoro",
+  "data": "2026-10-16",
+  "inizio": "14:00",
+  "fine": "16:00",
+  "formatore": "Giordano (indirizzo da indicare)",
+  "formatore_email": ""
+ },
+ {
+  "codice": "WBRELEPLSV",
+  "base": "PLSV",
+  "titolo": "PLS — Progettiamo la Scuola: la valutazione per competenze e obiettivi in ClasseViva",
+  "data": "2026-10-05",
+  "inizio": "17:15",
+  "fine": "19:15",
+  "formatore": "Lorenzo Delfino",
+  "formatore_email": "delfino@spaggiarinet.eu"
+ },
+ {
+  "codice": "WBRELEPLSD",
+  "base": "PLSD",
+  "titolo": "PLS — Progettiamo la Scuola: la gestione documentale integrata in ClasseViva",
+  "data": "2026-10-12",
+  "inizio": "17:15",
+  "fine": "19:15",
+  "formatore": "Lorenzo Delfino",
+  "formatore_email": "delfino@spaggiarinet.eu"
+ },
+ {
+  "codice": "WBRELEPERB",
+  "base": "PERB",
+  "titolo": "Corso base: primi passi nella gestione del personale",
+  "data": "2026-10-13",
+  "inizio": "11:00",
+  "fine": "13:00",
+  "formatore": "Luigi Bendini",
+  "formatore_email": "bendini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELEPERR",
+  "base": "PERR",
+  "titolo": "Gestione richieste: il ciclo completo",
+  "data": "2026-10-06",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Favero",
+  "formatore_email": "favero@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELEVEGA",
+  "base": "VEGA",
+  "titolo": "Come velocizzare la gestione del cartellino su Vega Real Time",
+  "data": "2026-10-14",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Favero",
+  "formatore_email": "favero@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELECOMP",
+  "base": "COMP",
+  "titolo": "Corso base per la liquidazione dei compensi accessori",
+  "data": "2026-11-19",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Luigi Bendini",
+  "formatore_email": "bendini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELEPVW",
+  "base": "PVW",
+  "titolo": "Formazione completa di aggiornamento sito web",
+  "data": "2026-10-09",
+  "inizio": "14:00",
+  "fine": "16:00",
+  "formatore": "da indicare (Maestri o Ferrari)",
+  "formatore_email": ""
+ },
+ {
+  "codice": "WBRELEPVWO",
+  "base": "PVWO",
+  "titolo": "Come valorizzare l'Open Day sul sito web - formazione sul modulo Open School",
+  "data": "2026-10-19",
+  "inizio": "14:30",
+  "fine": "16:30",
+  "formatore": "da indicare (Maestri o Ferrari)",
+  "formatore_email": ""
+ },
+ {
+  "codice": "WBRELESLSEG",
+  "base": "SLSEG",
+  "titolo": "Come preparare lo scrutinio del I ciclo (segreteria e staff DS)",
+  "data": "2026-12-10",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Franco De Gaspari",
+  "formatore_email": "degaspari@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESLDOC",
+  "base": "SLDOC",
+  "titolo": "Come preparare lo scrutinio del I ciclo (docenti)",
+  "data": "2026-12-16",
+  "inizio": "17:00",
+  "fine": "19:00",
+  "formatore": "Daniele Corradini",
+  "formatore_email": "corradini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESOS",
+  "base": "SOS",
+  "titolo": "Come preparare lo scrutinio del II ciclo (segreteria e staff DS)",
+  "data": "2026-12-04",
+  "inizio": "09:00",
+  "fine": "11:00",
+  "formatore": "Favero",
+  "formatore_email": "favero@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELESOD",
+  "base": "SOD",
+  "titolo": "Come preparare lo scrutinio del II ciclo (docenti)",
+  "data": "2026-12-17",
+  "inizio": "15:00",
+  "fine": "17:00",
+  "formatore": "Daniele Corradini",
+  "formatore_email": "corradini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELECVPRI",
+  "base": "CVPRI",
+  "titolo": "Come i docenti I ciclo possono usare al meglio ClasseViva",
+  "data": "2026-10-16",
+  "inizio": "17:00",
+  "fine": "19:00",
+  "formatore": "Daniele Corradini",
+  "formatore_email": "corradini@spaggiari.eu"
+ },
+ {
+  "codice": "WBRELECVSEC",
+  "base": "CVSEC",
+  "titolo": "Come i docenti II ciclo possono usare al meglio ClasseViva",
+  "data": "2026-10-20",
+  "inizio": "15:00",
+  "fine": "17:00",
+  "formatore": "Daniele Corradini",
+  "formatore_email": "corradini@spaggiari.eu"
+ }
+]
