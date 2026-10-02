@@ -110,7 +110,8 @@ def raccogli():
             if not venduto and any(st.startswith(n) for n in NON_PREVENTIVATI):
                 continue
             chiave = (comp, x["base"])
-            v = voci.setdefault(chiave, {"stato": "preventivato", "tier": x["tier"], "ordini": set(), "fase": st, "importo": deal.get("amount")})
+            v = voci.setdefault(chiave, {"stato": "preventivato", "tier": x["tier"], "ordini": set(), "fase": st, "importo": deal.get("amount"), "trattative": set()})
+            v["trattative"].add(deal.get("dealname") or d)
             if venduto and v["stato"] != "venduto":
                 v.update({"stato": "venduto", "tier": x["tier"], "fase": st})
             if ORDINE_POSTI[x["tier"]] > ORDINE_POSTI[v["tier"]] and (venduto or v["stato"] != "venduto"):
@@ -197,18 +198,18 @@ def html_report(voci, parte, aziende, pal, per_corso, oggi):
         righe2.append([html.escape(pal[base]["titolo"][:55]), quando(pal[base]), nome(comp), posti(v), "<b>%d</b>%s" % (n, avviso)])
     # 3. preventivati
     prev = sorted([(k, v) for k, v in voci.items() if v["stato"] == "preventivato"], key=lambda kv: (pal[kv[0][1]]["data"], nome(kv[0][0])))
-    righe3 = [[html.escape(pal[b]["titolo"][:55]), quando(pal[b]), nome(c), posti(v), html.escape(v["fase"].capitalize())] for (c, b), v in prev]
+    righe3 = [[html.escape(pal[b]["titolo"][:55]), quando(pal[b]), nome(c), posti(v), html.escape(v["fase"].capitalize()), html.escape(", ".join(sorted(v["trattative"]))[:60])] for (c, b), v in prev]
     tot_ven = sum(1 for _, v in ven), sum(parte.values())
     corpo = ("<div style='font-family:Arial,sans-serif;color:#0E2A4D;max-width:860px'>"
              "<h2 style='margin:0 0 4px 0'>Corsi in diretta · situazione della sera</h2>"
-             "<div style='color:#51606E;font-size:14px;margin:0 0 18px 0'>%d corsi venduti a scuole, %d partecipanti inseriti · %d preventivi in corso · aggiornato al %s</div>"
-             % (tot_ven[0], tot_ven[1], len(prev), oggi.strftime("%d/%m/%Y")))
+             "<div style='color:#51606E;font-size:14px;margin:0 0 18px 0'>%d corsi venduti a scuole, %d partecipanti inseriti · %d corsi preventivati in %d trattative · aggiornato al %s</div>"
+             % (tot_ven[0], tot_ven[1], len(prev), len(set(t for _, v in prev for t in v["trattative"])), oggi.strftime("%d/%m/%Y")))
     corpo += "<h3 style='margin:14px 0 2px 0'>Per corso</h3>" + tabella(["Corso", "Data", "Preventivati", "Venduti", "Posti venduti", "Inseriti"], righe1)
     corpo += "<h3 style='margin:14px 0 2px 0'>Corsi venduti: scuole e partecipanti inseriti</h3>" + (
         tabella(["Corso", "Data", "Scuola", "Posti", "Inseriti"], righe2) if righe2 else "<p>Nessun corso venduto per ora.</p>")
     corpo += "<h3 style='margin:14px 0 2px 0'>Corsi preventivati</h3>" + (
-        tabella(["Corso", "Data", "Scuola", "Posti", "Fase"], righe3) if righe3 else "<p>Nessun preventivo in corso.</p>")
-    corpo += "<p style='color:#51606E;font-size:12px'>Fonte: HubSpot (righe d'ordine dei corsi, affari ERP e pipeline Formazione, iscrizioni agli eventi). I tassi di partecipazione si aggiungono dopo le dirette.</p></div>"
+        tabella(["Corso", "Data", "Scuola", "Posti", "Fase", "Trattativa"], righe3) if righe3 else "<p>Nessun preventivo in corso.</p>")
+    corpo += "<p style='color:#51606E;font-size:12px'>Una trattativa può contenere più corsi: qui si contano i corsi (scuola per corso), non le trattative. Fonte: HubSpot (righe d'ordine dei corsi, affari ERP e pipeline Formazione, iscrizioni agli eventi). I tassi di partecipazione si aggiungono dopo le dirette.</p></div>"
     return corpo, (len(prev), tot_ven)
 
 
