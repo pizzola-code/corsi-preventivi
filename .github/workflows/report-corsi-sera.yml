@@ -1,0 +1,30 @@
+name: report-corsi-sera
+
+# Elenco serale dei corsi in diretta (preventivati, venduti, partecipanti inseriti): ogni sera alle 20 italiane.
+# Destinatari nella variabile del repository CORSI_REPORT_A (il repository e' pubblico: niente indirizzi nel codice).
+on:
+  schedule:
+    - cron: '0 18 * * *'      # 20:00 italiane con l'ora legale (19:00 dopo il 25 ottobre)
+  workflow_dispatch:
+    inputs:
+      solo_a:
+        description: "Prova: manda solo a questo indirizzo"
+        required: false
+        default: ""
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Elenco serale dei corsi
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          CORSI_REPORT_A: ${{ inputs.solo_a || vars.CORSI_REPORT_A }}
+        run: python report_corsi_sera.py
