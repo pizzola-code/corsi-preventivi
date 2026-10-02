@@ -31,6 +31,7 @@ import sys
 import time
 import smtplib
 import ssl
+import urllib.parse
 from email.message import EmailMessage
 
 QUI = os.path.dirname(os.path.abspath(__file__))
@@ -371,6 +372,38 @@ def lavora(o, auto, prova, destinatari_forzati=None):
     segna(chiave_ordine + "|inviato")
 
 
+def controllo_consegne():
+    """Una nomina con l'indirizzo sbagliato (es. un refuso nel dominio) non riceve mai il link: lo segnala.
+    Guarda i partecipanti nominati nelle ultime 48 ore; se la conferma risulta rimbalzata o bloccata avvisa
+    Andrea Pizzola e Malerba, una volta sola per indirizzo."""
+    gia = registro()
+    da = int((time.time() - 48 * 3600) * 1000)
+    r = C.hs("/crm/v3/objects/%s/search" % REG, {"filterGroups": [{"filters": [
+        {"propertyName": "ordine_corso", "operator": "HAS_PROPERTY"},
+        {"propertyName": "hs_createdate", "operator": "GTE", "value": str(da)}]}],
+        "properties": ["email", "full_name", "status", "ordine_corso"], "limit": 100}, "POST").get("results", [])
+    visti, righe = set(), []
+    for x in r:
+        p = x["properties"]
+        mail = (p.get("email") or "").lower()
+        if not mail or mail in visti or p.get("status") == "Canceled" or p.get("ordine_corso", "").startswith("PROVA"):
+            continue
+        visti.add(mail)
+        if "rimbalzo|" + mail in gia:
+            continue
+        ev = C.hs("/email/public/v1/events?recipient=%s&startTimestamp=%d&limit=100" % (urllib.parse.quote(mail), da)).get("events", [])
+        cattivi = [e for e in ev if e.get("type") in ("BOUNCE", "DROPPED", "DEFERRED")]
+        consegnata = any(e.get("type") == "DELIVERED" for e in ev)
+        if cattivi and not consegnata:
+            motivo = str(cattivi[-1].get("response") or cattivi[-1].get("status") or cattivi[-1]["type"])[:120]
+            righe.append("<b>%s</b> (%s, ordine %s): la conferma con il link non risulta consegnata - %s" % (
+                mail, p.get("full_name") or "", p.get("ordine_corso"), motivo))
+            segna("rimbalzo|" + mail)
+    if righe:
+        avviso_interno("Link non consegnati: controllare gli indirizzi", righe + [
+            "Probabile refuso nell'indirizzo indicato dalla scuola: serve farselo correggere e rifare la nomina dalla stessa pagina."])
+
+
 def main():
     prova = "--prova" in sys.argv
     forzato = None
@@ -396,6 +429,10 @@ def main():
             lavora(o, auto, prova)
         except Exception as e:
             print("  ERRORE su %s: %s %s" % (o["num"], type(e).__name__, str(e)[:160]))
+    try:
+        controllo_consegne()
+    except Exception as e:
+        print("  ERRORE nel controllo consegne: %s %s" % (type(e).__name__, str(e)[:160]))
     spedisci_riepilogo()
 
 
