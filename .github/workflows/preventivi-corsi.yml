@@ -68,6 +68,7 @@ jobs:
       - name: Eventi nuovi -> avviso interno
         if: always()
         env:
+          AVVISO_EVENTI_A: ${{ vars.AVVISO_EVENTI_A }}
           HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
           SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
@@ -83,6 +84,8 @@ jobs:
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
           CHIAVE_NOMINE_CORSI: ${{ secrets.CHIAVE_NOMINE_CORSI }}
           CORSI_INVIO_AUTOMATICO: ${{ vars.CORSI_INVIO_AUTOMATICO }}
+          CORSI_BCC: ${{ vars.CORSI_BCC }}
+          CORSI_AVVISO_A: ${{ vars.CORSI_AVVISO_A }}
         run: python corsi_ordini.py
 
       # Il registro degli invii va salvato subito: e' cio' che impedisce di

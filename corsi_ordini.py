@@ -44,8 +44,9 @@ EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio 
 PAGINA = "https://www.spaggiari.eu/indica-partecipanti-corso"
 CORSO = re.compile(r"^WBRELE?([A-Z0-9]+)-(1|3|I)$")
 CC_FISSI = []                              # in copia visibile solo l'agente di zona
-BCC = ["pizzola@spaggiari.eu", "malerba@spaggiari.eu", "primiceri@spaggiari.eu", "bertozzi@spaggiari.eu", "maestri@spaggiari.eu"]
-AVVISO_A = ["pizzola@spaggiari.eu", "malerba@spaggiari.eu"]
+# indirizzi nelle variabili del repository (CORSI_BCC, CORSI_AVVISO_A): il codice e' pubblico, gli indirizzi no
+BCC = [x for x in os.environ.get("CORSI_BCC", "").replace(" ", "").split(",") if x]
+AVVISO_A = [x for x in os.environ.get("CORSI_AVVISO_A", "").replace(" ", "").split(",") if x]
 CHIUSURA_ORE = 4
 REGISTRO = os.path.join(QUI, "ordini_corsi_gestiti.txt")
 GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
@@ -311,65 +312,97 @@ def ordini_nuovi(giorni=30):
     return list(out.values())
 
 
-def lavora(o, auto, prova, destinatari_forzati=None):
+def prepara(o, prova):
+    """Dati di UNA riga d'ordine (un corso): evento, link, orari. (None, motivo) se non e' pronta."""
     m = CORSO.match(o["sku"])
     base, tier = m.group(1), m.group(2)
     posti = 0 if tier == "I" else int(tier)
-    chiave_ordine = "%s|%s" % (o["num"], o["sku"])
-    gia = registro()
-    if chiave_ordine + "|inviato" in gia:
-        return
     az = C.hs("/crm/v4/objects/deals/%s/associations/companies" % o["deal"]).get("results", [])
     if not az:
-        print("  %s: affare senza scuola collegata" % o["num"])
-        return
+        return None, "affare senza scuola collegata"
     azienda = C.hs("/crm/v3/objects/companies/%s?properties=name,codice_cliente" % az[0]["toObjectId"])["properties"]
     azienda_id = az[0]["toObjectId"]
     ev, perche = evento_per(base, crea=not prova, prova=prova)
-    nome_corso = (ev or {}).get("properties", {}).get("name", "").replace("Corso | ", "") if ev else base
-    print("  %s · %s · %s · posti %s · evento: %s" % (o["num"], azienda.get("codice_cliente"), o["sku"], posti or "illimitati",
-                                                      ev["id"] if ev else perche))
+    print("  %s · %s · posti %s · evento: %s" % (o["num"], o["sku"], posti or "illimitati", ev["id"] if ev else perche))
     if not ev:
-        if chiave_ordine + "|avvisato-evento" not in gia and not prova:
-            avviso_interno("Ordine di corso senza evento: %s" % o["num"], [
-                "L'ordine <b>%s</b> (%s) riguarda il corso %s, ma %s." % (o["num"], pulito(azienda.get("name")), o["sku"], perche),
-                "Quando l'evento esiste il giro prepara da solo il link per la scuola."])
-            segna(chiave_ordine + "|avvisato-evento")
-        return
+        return {"azienda": azienda, "azienda_id": azienda_id, "mancante": perche}, perche
     p = ev["properties"] if "start_datetime" in ev["properties"] else C.hs(
         "/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime" % (EV, ev["id"]))["properties"]
+    link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id)
+    return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
+            "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
+            "chiusura": chiusura(p["start_datetime"]), "link": link}, None
+
+
+def dati_email(voci):
+    """Proprieta' dell'e-mail: il primo corso nei campi base, gli altri come corso_2, quando_2, link_2, ..."""
+    primo = voci[0]
+    d = {"corso": primo["corso"], "scuola": pulito(primo["azienda"].get("name")), "quando": primo["quando"],
+         "chiusura": primo["chiusura"], "link": primo["link"],
+         "oggetto": ("Corso «%s»: indica chi partecipa" % primo["corso"]) if len(voci) == 1 else "I tuoi corsi in diretta: indica chi partecipa"}
+    for i, v in enumerate(voci[1:9], start=2):
+        d["corso_%d" % i], d["quando_%d" % i], d["link_%d" % i] = v["corso"], v["quando"], v["link"]
+    return d
+
+
+def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
+    """Tutte le righe-corso di UN ordine: una sola e-mail alla scuola, con un blocco e un pulsante per corso."""
+    num = righe[0]["num"]
+    gia = registro()
+    righe = [o for o in righe if "%s|%s|inviato" % (o["num"], o["sku"]) not in gia]
+    if not righe:
+        return
+    voci, mancanti = [], []
+    for o in righe:
+        v, motivo = prepara(o, prova)
+        if v and not v.get("mancante"):
+            voci.append((o, v))
+        elif v:
+            mancanti.append((o, v, motivo))
+    for o, v, motivo in mancanti:
+        k = "%s|%s|avvisato-evento" % (o["num"], o["sku"])
+        if k not in gia and not prova:
+            avviso_interno("Ordine di corso senza evento: %s" % o["num"], [
+                "L'ordine <b>%s</b> (%s) riguarda il corso %s, ma %s." % (o["num"], pulito(v["azienda"].get("name")), o["sku"], motivo),
+                "Quando l'evento esiste il giro prepara da solo il link per la scuola."])
+            segna(k)
+    if not voci:
+        return
+    schede = [v for _, v in voci]
+    dati = dati_email(schede)
     if destinatari_forzati:
         dest, motivo = [(e, "") for e in destinatari_forzati], "scelti da una persona"
     else:
-        dest, motivo = destinatari(azienda_id)
-    link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id)
-    dati = {"corso": re.sub(r"^Corso \| ", "", p.get("name") or nome_corso), "scuola": pulito(azienda.get("name")),
-            "quando": quando(p["start_datetime"], p["end_datetime"]), "chiusura": chiusura(p["start_datetime"]), "link": link}
-    agente = email_agente(o["deal"])
+        dest, motivo = destinatari(schede[0]["azienda_id"])
+    agente = email_agente(voci[0][0]["deal"])
     cc = CC_FISSI + ([agente] if agente and agente not in CC_FISSI else [])
+    elenco = "; ".join("%s (%s)" % (v["corso"], v["quando"]) for v in schede)
     if not dest:
-        print("     destinatari: DA DECIDERE (%s)" % motivo)
-        if chiave_ordine + "|avvisato-destinatari" not in gia and not prova:
-            avviso_interno("Ordine di corso: da scegliere a chi mandare il link (%s)" % o["num"], [
-                "L'ordine <b>%s</b> di %s riguarda il corso «%s» (%s)." % (o["num"], dati["scuola"], dati["corso"], dati["quando"]),
+        print("     destinatari: DA DECIDERE (il motivo e' nel riepilogo interno)")
+        k = "%s|avvisato-destinatari" % num
+        if k not in gia and not prova:
+            avviso_interno("Ordine di corso: da scegliere a chi mandare il link (%s)" % num, [
+                "L'ordine <b>%s</b> di %s riguarda: %s." % (num, dati["scuola"], elenco),
                 "Non riesco a scegliere i destinatari da solo: %s." % motivo,
-                "Per inviare: <code>python corsi_ordini.py --ordine %s --a mail1,mail2 --invia</code> (o scrivi ad Andrea Pizzola)." % o["num"]])
-            segna(chiave_ordine + "|avvisato-destinatari")
+                "Per inviare: <code>python corsi_ordini.py --ordine %s --a mail1,mail2 --invia</code> (o scrivi ad Andrea Pizzola)." % num])
+            segna(k)
         return
-    print("     destinatari: %s (%s) · cc: %s · ccn: %s" % (", ".join(e for e, _ in dest), motivo, ", ".join(cc) or "-", ", ".join(BCC)))
+    print("     destinatari: %d (%s) · cc: %d · ccn: %d · corsi nella stessa e-mail: %d" % (len(dest), motivo, len(cc), len(BCC), len(schede)))
     if prova:
         return
     if not auto:
-        if chiave_ordine + "|pronto" not in gia:
-            avviso_interno("Ordine di corso pronto per l'invio: %s" % o["num"], [
-                "L'ordine <b>%s</b> di %s riguarda il corso «%s» (%s)." % (o["num"], dati["scuola"], dati["corso"], dati["quando"]),
+        k = "%s|pronto" % num
+        if k not in gia:
+            avviso_interno("Ordine di corso pronto per l'invio: %s" % num, [
+                "L'ordine <b>%s</b> di %s riguarda: %s." % (num, dati["scuola"], elenco),
                 "Destinatari previsti: %s (%s). In copia: %s. In copia nascosta: voi." % (", ".join(e for e, _ in dest), motivo, ", ".join(cc) or "nessuno"),
                 "L'invio automatico e' spento: per mandare l'e-mail dal portale HubSpot dai l'ok ad Andrea Pizzola."])
-            segna(chiave_ordine + "|pronto")
+            segna(k)
         return
     r = invia([e for e, _ in dest], cc, dati)
     print("     inviata da HubSpot:", r.get("status"), r.get("statusId", "")[:20])
-    segna(chiave_ordine + "|inviato")
+    for o, _ in voci:
+        segna("%s|%s|inviato" % (o["num"], o["sku"]))
 
 
 def controllo_consegne():
@@ -414,8 +447,7 @@ def main():
         if not todo:
             print("ordine %s non trovato fra gli ordini di corsi in «Chiuso Vinto»" % num)
             return
-        for o in todo:
-            lavora(o, auto="--invia" in sys.argv, prova=prova, destinatari_forzati=a)
+        lavora_ordine(todo, auto="--invia" in sys.argv, prova=prova, destinatari_forzati=a)
         spedisci_riepilogo()
         return
     auto = os.environ.get("CORSI_INVIO_AUTOMATICO") == "1"
@@ -424,11 +456,14 @@ def main():
         return
     os_ = ordini_nuovi()
     print("ordini di corsi in «Chiuso Vinto» negli ultimi 30 giorni: %d (invio automatico: %s)" % (len(os_), "ACCESO" if auto else "spento"))
+    per_ordine = {}
     for o in os_:
+        per_ordine.setdefault(o["num"], []).append(o)
+    for num, righe in per_ordine.items():
         try:
-            lavora(o, auto, prova)
+            lavora_ordine(righe, auto, prova)
         except Exception as e:
-            print("  ERRORE su %s: %s %s" % (o["num"], type(e).__name__, str(e)[:160]))
+            print("  ERRORE su %s: %s %s" % (num, type(e).__name__, str(e)[:160]))
     try:
         controllo_consegne()
     except Exception as e:

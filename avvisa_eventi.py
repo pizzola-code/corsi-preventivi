@@ -29,7 +29,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import preventivi_corsi as C                                  # noqa: E402
 
 EV = "2-143900361"
-DESTINATARI = ["pari@spaggiari.eu", "bertozzi@spaggiari.eu", "dallarizza@spaggiari.eu", "malerba@spaggiari.eu"]
+# indirizzi nella variabile del repository AVVISO_EVENTI_A (separati da virgola): il codice e' pubblico, gli indirizzi no
+DESTINATARI = [x for x in os.environ.get("AVVISO_EVENTI_A", "").replace(" ", "").split(",") if x]
 # gli eventi nati prima del lancio (1/10/2026 ~23:00 italiane) non si segnalano
 DA_QUANDO = datetime.datetime(2026, 10, 1, 21, 0, tzinfo=datetime.timezone.utc)
 ATTESA_LINK_MIN = 30
