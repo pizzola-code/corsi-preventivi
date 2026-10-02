@@ -37,15 +37,28 @@ REGISTRO = os.path.join(QUI, "avvisati_eventi.txt")
 PORTALE = "144406271"
 
 
+_FORM = None
+
+
+def tabella_formatori():
+    """formatori dalla tabella HubDB «formatori_corsi» (la modifica Andrea dal portale); se non risponde, il file del repository"""
+    global _FORM
+    if _FORM is None:
+        try:
+            righe = C.hs("/cms/v3/hubdb/tables/formatori_corsi/rows?limit=200").get("results", [])
+            _FORM = [{"base": (r["values"].get("base") or "").strip().upper(), "formatore": r["values"].get("formatore") or "",
+                      "formatore_email": (r["values"].get("email") or "").replace(" ", "")} for r in righe]
+        except Exception:
+            _FORM = json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))
+    return _FORM
+
+
 def formatore(p):
     """(nome, [email]) del formatore se l'evento e' un corso del palinsesto, altrimenti (None, [])"""
     if not re.match(r"^\s*corso\s*\|", p.get("name") or "", re.I):
         return None, []
     m = re.match(r"^CF-([A-Z0-9]+)-\d{4}$", (p.get("external_id") or "").upper())
-    try:
-        tab = json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))
-    except Exception:
-        return None, []
+    tab = tabella_formatori()
     v = next((x for x in tab if m and x["base"] == m.group(1)), None)
     if not v:
         return None, []
