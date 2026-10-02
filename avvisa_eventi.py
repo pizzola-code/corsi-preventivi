@@ -27,7 +27,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import preventivi_corsi as C                                  # noqa: E402
 
 EV = "2-143900361"
-DESTINATARI = ["pari@spaggiari.eu", "bertozzi@spaggiari.eu", "dallarizza@spaggiari.eu"]
+DESTINATARI = ["pari@spaggiari.eu", "bertozzi@spaggiari.eu", "dallarizza@spaggiari.eu", "malerba@spaggiari.eu"]
 # gli eventi nati prima del lancio (1/10/2026 ~23:00 italiane) non si segnalano
 DA_QUANDO = datetime.datetime(2026, 10, 1, 21, 0, tzinfo=datetime.timezone.utc)
 ATTESA_LINK_MIN = 30
