@@ -37,32 +37,21 @@ REGISTRO = os.path.join(QUI, "avvisati_eventi.txt")
 PORTALE = "144406271"
 
 
-_FORM = None
-
-
-def tabella_formatori():
-    """formatori dalla tabella HubDB «formatori_corsi» (la modifica Andrea dal portale); se non risponde, il file del repository"""
-    global _FORM
-    if _FORM is None:
-        try:
-            righe = C.hs("/cms/v3/hubdb/tables/formatori_corsi/rows?limit=200").get("results", [])
-            _FORM = [{"base": (r["values"].get("base") or "").strip().upper(), "formatore": r["values"].get("formatore") or "",
-                      "formatore_email": (r["values"].get("email") or "").replace(" ", "")} for r in righe]
-        except Exception:
-            _FORM = json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))
-    return _FORM
-
-
-def formatore(p):
-    """(nome, [email]) del formatore se l'evento e' un corso del palinsesto, altrimenti (None, [])"""
-    if not re.match(r"^\s*corso\s*\|", p.get("name") or "", re.I):
+def formatore(p, eid=None):
+    """(nomi, [email]) dei relatori associati all'evento (oggetto «hapily speaker») se e' un corso; altrimenti (None, [])"""
+    if not re.match(r"^\s*corso\s*\|", p.get("name") or "", re.I) or not eid:
         return None, []
-    m = re.match(r"^CF-([A-Z0-9]+)-\d{4}$", (p.get("external_id") or "").upper())
-    tab = tabella_formatori()
-    v = next((x for x in tab if m and x["base"] == m.group(1)), None)
-    if not v:
+    try:
+        ass = C.hs("/crm/v4/objects/%s/%s/associations/2-144750696" % (EV, eid)).get("results", [])
+        if not ass:
+            return None, []
+        r = C.hs("/crm/v3/objects/2-144750696/batch/read", {"properties": ["name", "email"],
+                 "inputs": [{"id": str(x["toObjectId"])} for x in ass]}, "POST").get("results", [])
+    except Exception:
         return None, []
-    return v.get("formatore"), [e for e in (v.get("formatore_email") or "").split(",") if e]
+    nomi = [x["properties"].get("name") or "" for x in r]
+    mails = [x["properties"]["email"].strip() for x in r if (x["properties"].get("email") or "").strip()]
+    return (", ".join(nomi) or None), mails
 
 
 def registro():
@@ -123,11 +112,11 @@ def corpo(p, eid):
         riga("Pubblicato sul sito", pubblicato),
         riga("Collegamento", link_html),
         riga("Codice", html.escape(p.get("external_id") or "-")),
-        riga("Formatore", html.escape(formatore(p)[0] or "-")) if formatore(p)[0] else "",
+        riga("Relatore", html.escape(formatore(p, eid)[0] or "-")) if formatore(p, eid)[0] else "",
         riga("Scheda", '<a href="%s">apri in HubSpot</a>' % record),
     ])
     nota = ""
-    if formatore(p)[0]:
+    if formatore(p, eid)[0]:
         nota = ("<p>Corso riservato a chi ha acquistato la licenza. Le scuole indicano i partecipanti e ognuno riceve il proprio link. "
                 "Chi lo conduce riceve il link per avviare la diretta circa un'ora prima dell'inizio.</p>")
     return ("<div style='font-family:Arial,sans-serif;font-size:15px;color:#0E2A4D'>"
@@ -159,7 +148,7 @@ def main():
         print("  AVVISO: %s" % oggetto)
         if prova:
             continue
-        _, mail_f = formatore(p)
+        _, mail_f = formatore(p, x["id"])
         manda(oggetto, corpo(p, x["id"]), DESTINATARI + [e for e in mail_f if e not in DESTINATARI])
         with io.open(REGISTRO, "a", encoding="utf-8") as f:
             f.write(x["id"] + "\n")

@@ -146,6 +146,13 @@ def evento_per(base, crea, prova):
         "tag": "Formazione", "description": "Corso di formazione riservato a chi ha acquistato la licenza. Codice %s." % voce["codice"]}
     n = C.hs("/crm/v3/objects/%s" % EV, {"properties": props}, "POST")
     props["id"] = n["id"]
+    # i relatori del corso (oggetto «hapily speaker»), dal palinsesto: da loro il link di avvio un'ora prima
+    for nome in voce.get("relatori", []):
+        sp = C.hs("/crm/v3/objects/2-144750696/search", {"filterGroups": [{"filters": [
+            {"propertyName": "name", "operator": "EQ", "value": nome}]}], "properties": ["name"], "limit": 1}, "POST").get("results", [])
+        if sp:
+            C.hs("/crm/v4/objects/%s/%s/associations/2-144750696/%s" % (EV, n["id"], sp[0]["id"]),
+                 [{"associationCategory": "USER_DEFINED", "associationTypeId": 343}], "PUT")
     return {"id": n["id"], "properties": props}, None
 
 
