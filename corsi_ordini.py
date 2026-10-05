@@ -67,9 +67,11 @@ def chiave():
     return k.strip()
 
 
-def codice(ordine, cliente, scuola, evento, posti, azienda):
-    payload = b64u(json.dumps({"o": ordine, "c": cliente, "s": scuola, "e": str(evento), "n": posti, "k": azienda},
-                              separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+def codice(ordine, cliente, scuola, evento, posti, azienda, minuti_prima=None):
+    dati = {"o": ordine, "c": cliente, "s": scuola, "e": str(evento), "n": posti, "k": azienda}
+    if minuti_prima is not None:
+        dati["x"] = minuti_prima          # nomina aperta fino a N minuti prima (ordine arrivato a ridosso della diretta)
+    payload = b64u(json.dumps(dati, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     firma = b64u(hmac.new(chiave().encode(), payload.encode(), hashlib.sha256).digest())[:32]
     return payload + "." + firma
 
@@ -102,8 +104,17 @@ def quando(iso_inizio, iso_fine):
     return "%s %d %s %d, ore %s–%s" % (GIORNI[a.weekday()], a.day, MESI[a.month - 1], a.year, a.strftime("%H:%M"), b.strftime("%H:%M"))
 
 
-def chiusura(iso_inizio):
-    c = ora_italiana(iso_inizio) - datetime.timedelta(hours=CHIUSURA_ORE)
+MINUTI_ORDINE_TARDIVO = 30   # ordine arrivato dopo la chiusura normale: si nomina fino a 30 minuti prima
+
+
+def e_tardivo(iso_inizio):
+    ini = datetime.datetime.fromisoformat(iso_inizio.replace("Z", "+00:00"))
+    ora = datetime.datetime.now(datetime.timezone.utc)
+    return ini - datetime.timedelta(hours=CHIUSURA_ORE) < ora < ini - datetime.timedelta(minutes=MINUTI_ORDINE_TARDIVO)
+
+
+def chiusura(iso_inizio, minuti_prima=None):
+    c = ora_italiana(iso_inizio) - (datetime.timedelta(minutes=minuti_prima) if minuti_prima is not None else datetime.timedelta(hours=CHIUSURA_ORE))
     return "alle %s di %s %d %s" % (c.strftime("%H:%M"), GIORNI[c.weekday()], c.day, MESI[c.month - 1])
 
 
@@ -328,10 +339,11 @@ def prepara(o, prova):
         return {"azienda": azienda, "azienda_id": azienda_id, "mancante": perche}, perche
     p = ev["properties"] if "start_datetime" in ev["properties"] else C.hs(
         "/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime" % (EV, ev["id"]))["properties"]
-    link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id)
+    tardi = MINUTI_ORDINE_TARDIVO if e_tardivo(p["start_datetime"]) else None
+    link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id, tardi)
     return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
             "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
-            "chiusura": chiusura(p["start_datetime"]), "link": link}, None
+            "chiusura": chiusura(p["start_datetime"], tardi), "link": link}, None
 
 
 def dati_email(voci):
