@@ -481,6 +481,11 @@ def main():
         controllo_consegne()
     except Exception as e:
         print("  ERRORE nel controllo consegne: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
+        import solleciti_corsi
+        solleciti_corsi.solleciti(os_, auto, prova)
+    except Exception as e:
+        print("  ERRORE nei solleciti: %s %s" % (type(e).__name__, str(e)[:160]))
     spedisci_riepilogo()
 
 
