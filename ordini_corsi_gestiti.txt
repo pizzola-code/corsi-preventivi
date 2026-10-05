@@ -21,3 +21,9 @@ rimbalzo|vollaro.alessia@tartglia-olivieri.eu
 rimbalzo|silviaferino@paolinodaquieleia.edu.it
 2026EN16775|WBRELEBILC-1|inviato
 2026EN16775|WBRELEPERR-1|inviato
+2026EN16781|WBRELESDP-I|inviato
+2026EN16781|WBRELEPERB-3|inviato
+2026EN16781|WBRELEVEGA-1|inviato
+2026EN16781|WBRELESDAT-I|inviato
+2026EN16781|WBRELEPLSV-I|inviato
+2026EN16781|WBRELEPERR-3|inviato
