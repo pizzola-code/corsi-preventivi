@@ -302,7 +302,7 @@ def ordini_nuovi(giorni=30):
     righe, dopo = [], None
     for _ in range(10):
         r = C.hs("/crm/v3/objects/line_items/search", {"filterGroups": [{"filters": [
-            {"propertyName": "hs_sku", "operator": "CONTAINS_TOKEN", "value": "WBRELE*"},
+            {"propertyName": "hs_sku", "operator": "CONTAINS_TOKEN", "value": "WBREL*"},
             {"propertyName": "createdate", "operator": "GTE", "value": str(int((time.time() - giorni * 86400) * 1000))}]}],
             "properties": ["hs_sku", "name", "quantity"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
         righe += [x for x in r.get("results", []) if CORSO.match(x["properties"].get("hs_sku") or "")]
