@@ -423,10 +423,19 @@ def avviso_controllo(scuola, responsabile, motivo, trattativa, n_corsi, netto):
     m = EmailMessage()
     m["From"] = "Spaggiari <%s>" % MITTENTE
     m["To"] = CONTROLLO
-    m["Subject"] = "Corsi: %s -> %s" % (scuola, nome)
-    m.set_content("Richiesta preventivo corsi da %s (%d corsi, %s).\n\n"
-                  "Trattativa e task assegnati a: %s\nPerche': %s\n\nTrattativa: %s\n"
-                  % (scuola, n_corsi, euro(netto), nome, motivo, link))
+    senza_agente = (motivo or "").startswith("scuola senza agente")
+    extra = [x for x in os.environ.get("CORSI_SENZA_AGENTE_A", "").replace(" ", "").split(",") if x]
+    if senza_agente and extra:          # Andrea 5/10/2026: avviso a Laura Primiceri quando la scuola non ha un agente
+        m["To"] = ", ".join([CONTROLLO] + extra)
+    m["Subject"] = ("Corsi, scuola senza agente: %s" % scuola) if senza_agente else ("Corsi: %s -> %s" % (scuola, nome))
+    testo = ("Richiesta preventivo corsi da %s (%d corsi, %s).\n\n"
+             "Trattativa e task assegnati a: %s\nPerche': %s\n\nTrattativa: %s\n"
+             % (scuola, n_corsi, euro(netto), nome, motivo, link))
+    if senza_agente:
+        testo += ("\nLa scuola non ha un agente di zona: la trattativa resta in pipeline Formazione. "
+                  "Il preventivo e' gia' partito dal sistema; quando arriva l'ordine la trattativa passa da sola a "
+                  "«Ordine confermato» (o a «Chiusa persa» se l'ordine viene chiuso perso).\n")
+    m.set_content(testo)
     s = smtplib.SMTP(SMTP_HOST, SMTP_PORTA, timeout=60)
     s.starttls(context=ssl.create_default_context())
     s.login(utente, chiave)

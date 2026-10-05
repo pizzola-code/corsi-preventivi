@@ -43,6 +43,7 @@ jobs:
           MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
           MITTO_CHAT_KEY: ${{ secrets.MITTO_CHAT_KEY }}
           MITTO_TRAFFIC_WA: ${{ secrets.MITTO_TRAFFIC_WA }}
+          CORSI_SENZA_AGENTE_A: ${{ vars.CORSI_SENZA_AGENTE_A }}
         run: |
           python preventivi_corsi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 

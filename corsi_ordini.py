@@ -486,6 +486,11 @@ def main():
     except Exception as e:
         print("  ERRORE nel controllo consegne: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
+        import chiusura_trattative
+        chiusura_trattative.main(prova)
+    except Exception as e:
+        print("  ERRORE nella chiusura trattative: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
         import solleciti_corsi
         solleciti_corsi.solleciti(os_, auto, prova)
     except Exception as e:
