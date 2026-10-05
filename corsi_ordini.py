@@ -319,7 +319,11 @@ def ordini_nuovi(giorni=30):
             num = re.sub(r"\s*-\s*ERP\s*$", "", deal.get("dealname") or "")
             if not num.startswith(anno) or "vinto" not in (stadio.get(deal.get("dealstage"), "")).lower():
                 continue
-            out.setdefault((num, x["properties"]["hs_sku"]), {"deal": d["toObjectId"], "num": num, "sku": x["properties"]["hs_sku"]})
+            voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": d["toObjectId"], "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
+            try:
+                voce["qta"] += max(1, int(float(x["properties"].get("quantity") or 1)))     # 2 copie di un corso da 1 posto = 2 posti
+            except ValueError:
+                voce["qta"] += 1
     return list(out.values())
 
 
@@ -327,7 +331,7 @@ def prepara(o, prova):
     """Dati di UNA riga d'ordine (un corso): evento, link, orari. (None, motivo) se non e' pronta."""
     m = CORSO.match(o["sku"])
     base, tier = m.group(1), m.group(2)
-    posti = 0 if tier == "I" else int(tier)
+    posti = 0 if tier == "I" else int(tier) * max(1, o.get("qta") or 1)
     az = C.hs("/crm/v4/objects/deals/%s/associations/companies" % o["deal"]).get("results", [])
     if not az:
         return None, "affare senza scuola collegata"
