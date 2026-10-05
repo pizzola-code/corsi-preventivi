@@ -48,6 +48,39 @@ def locale(iso):
     return "%s %d %s %d" % (GIORNI[d.weekday()], d.day, MESI[d.month - 1], d.year), d.strftime("%H:%M"), d
 
 
+def guardia_iscrizioni_libere(corsi, prova):
+    """Il corso e' riservato: le iscrizioni valide nascono solo dalla pagina di nomina (hanno `ordine_corso`).
+    Chi si iscrive dal modulo pubblico di hapily (pagina /eventi/appuntamento/<id>) viene annullato e segnalato;
+    i colleghi (@spaggiari.eu e simili) restano."""
+    nostri = re.compile(r"@(spaggiari\.eu|spaggiarinet\.eu|gruppospaggiari\.it)$", re.I)
+    annullate = []
+    for e in corsi:
+        r = C.hs("/crm/v3/objects/%s/search" % REG, {
+            "filterGroups": [{"filters": [{"propertyName": "event_id", "operator": "EQ", "value": e["id"]},
+                                          {"propertyName": "ordine_corso", "operator": "NOT_HAS_PROPERTY"},
+                                          {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}]}],
+            "properties": ["email", "full_name"], "limit": 100}, "POST").get("results", [])
+        for x in r:
+            mail = (x["properties"].get("email") or "").strip().lower()
+            if nostri.search(mail):
+                continue
+            print("  ISCRIZIONE LIBERA a %s: %s (%s)%s" % (e["properties"].get("name"), mail, x["properties"].get("full_name") or "", " [prova]" if prova else " -> annullata"))
+            if not prova:
+                C.hs("/crm/v3/objects/%s/%s" % (REG, x["id"]), {"properties": {"status": "Canceled"}}, "PATCH")
+            annullate.append((e["properties"].get("name"), mail, x["properties"].get("full_name") or ""))
+    if annullate and not prova:
+        try:
+            import corsi_ordini as O
+            O.avviso_interno("Iscrizioni libere a corsi riservati annullate", [
+                "%s: <b>%s</b> %s" % (n, m, ("(%s)" % nome) if nome else "") for n, m, nome in annullate] + [
+                "Il corso e' riservato a chi ha ordinato: queste iscrizioni arrivano dal modulo pubblico e sono state annullate. "
+                "Se la persona ha diritto a partecipare, va indicata dalla pagina di nomina della scuola."])
+            O.spedisci_riepilogo()
+        except Exception as err:
+            print("  avviso non inviato:", err)
+    return len(annullate)
+
+
 def main():
     prova = "--prova" in sys.argv
     da = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -56,6 +89,7 @@ def main():
         "sorts": [{"propertyName": "start_datetime", "direction": "ASCENDING"}], "properties": CAMPI_EV, "limit": 100}, "POST").get("results", [])
     corsi = [e for e in eventi if re.match(r"^\s*corso\s*\|", e["properties"].get("name") or "", re.I)]
     sistemate = 0
+    fuori = guardia_iscrizioni_libere(corsi, prova)
     for e in corsi:
         p = dict(e["properties"])
         if not p.get("display_start_date") and p.get("start_datetime"):
