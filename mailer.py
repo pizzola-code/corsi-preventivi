@@ -38,6 +38,11 @@ def get_graph_token(tenant, client_id, refresh_token):
     return j
 
 
+# Indirizzi da non usare piu', qualunque sia la fonte (codice, secret, liste HubSpot).
+# mohacht@: Abir non lavora piu' in Spaggiari (Andrea, 6/10/2026).
+ESCLUSI = {"mohacht@spaggiarinet.eu"}
+
+
 def graph_send_mail(token, to, subject, html, allegati=None):
     """allegati: lista di (nome, bytes). Graph li vuole in base64 dentro il
     messaggio, e sopra i ~4 MB complessivi rifiuta: per file piu' grandi
@@ -47,7 +52,8 @@ def graph_send_mail(token, to, subject, html, allegati=None):
         "message": {
             "subject": subject,
             "body": {"contentType": "HTML", "content": html},
-            "toRecipients": [{"emailAddress": {"address": a.strip()}} for a in to.split(",")],
+            "toRecipients": [{"emailAddress": {"address": a.strip()}} for a in to.split(",")
+                             if a.strip() and a.strip().lower() not in ESCLUSI],
         },
         "saveToSentItems": True,
     }
@@ -67,10 +73,10 @@ def graph_send_mail(token, to, subject, html, allegati=None):
 
 
 # Destinatari delle mail OPERATIVE del motore (approvazione e conferma invii):
-# solo chi decide e chi esegue. Andrea, 28/08/2026: "mandala solo a me e Abir".
+# solo chi decide e chi esegue. Andrea, 28/08/2026: "mandala solo a me e Abir"; Abir esce il 6/10/2026.
 # Il riepilogo giornaliero del calendario NON usa questa lista: va a tutto il team
 # (lista interna 4236 + copia fissa) e resta cosi'.
-OPERATIVI = "pizzola@spaggiari.eu,mohacht@spaggiarinet.eu"
+OPERATIVI = "pizzola@spaggiari.eu"
 
 
 def send_report(subject, html, to=None, allegati=None):
