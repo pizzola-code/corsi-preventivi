@@ -40,7 +40,11 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import preventivi_corsi as C                                  # noqa: E402
 
 EV, REG = "2-143900361", "2-143900355"
-EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio da API)»
+EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio da API)» = modello per UN corso
+# Un modello per ogni numero di corsi (1-8): le condizioni {% if %} di HubSpot nelle e-mail automatiche risultano sempre vere,
+# quindi i blocchi dei corsi 2-8 comparivano vuoti anche con un corso solo. Senza condizioni, ogni modello ha esattamente i suoi blocchi.
+EMAIL_PER_N = {1: 483372784867, 2: 485623493847, 3: 485623493841, 4: 485683370198,
+               5: 485683370193, 6: 485683370187, 7: 485623493828, 8: 485615264984}
 PAGINA = "https://www.spaggiari.eu/indica-partecipanti-corso"
 CORSO = re.compile(r"^WBRELE?([A-Z0-9]+)-(1|3|I)$")
 CC_FISSI = []                              # in copia visibile solo l'agente di zona
@@ -252,7 +256,8 @@ def email_agente(deal_id):
 
 # ---------------------------------------------------------------- invio da HubSpot
 def invia(a, cc, oggetto_dati):
-    corpo = {"emailId": EMAIL_ID, "message": {"to": a[0], "cc": [x for x in (a[1:] + cc) if x], "bcc": BCC},
+    n = 1 + sum(1 for i in range(2, 9) if oggetto_dati.get("corso_%d" % i))
+    corpo = {"emailId": EMAIL_PER_N.get(n, EMAIL_ID), "message": {"to": a[0], "cc": [x for x in (a[1:] + cc) if x], "bcc": BCC},
              "customProperties": oggetto_dati}
     return C.hs("/marketing/v3/transactional/single-email/send", corpo, "POST")
 
