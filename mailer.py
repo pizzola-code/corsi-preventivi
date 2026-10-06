@@ -40,7 +40,7 @@ def get_graph_token(tenant, client_id, refresh_token):
 
 # Indirizzi da non usare piu', qualunque sia la fonte (codice, secret, liste HubSpot).
 # mohacht@: Abir non lavora piu' in Spaggiari (Andrea, 6/10/2026).
-ESCLUSI = {"mohacht@spaggiarinet.eu"}
+ESCLUSI = {"mohacht@spaggiarinet.eu", "mohacht@spaggiari.eu"}
 
 
 def graph_send_mail(token, to, subject, html, allegati=None):
