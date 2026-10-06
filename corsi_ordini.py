@@ -197,7 +197,32 @@ def evento_per(base, crea, prova):
 
 
 # ---------------------------------------------------------------- destinatari
+def mail_istituzionale(azienda_id):
+    """<codice meccanografico>@istruzione.it: l'indirizzo istituzionale di ogni scuola STATALE, letto dalla segreteria e
+    quello a cui arriva la posta degli ordini MePA. Si aggiunge sempre ai destinatari: chi ha chiesto il preventivo
+    spesso non e' chi gestisce il corso (Andrea, 6/10/2026: le scuole non trovano l'invito)."""
+    try:
+        p = C.hs("/crm/v3/objects/companies/%s?properties=name,descrizione_tipo_cliente" % azienda_id)["properties"]
+    except Exception:
+        return None
+    m = re.match(r"^\s*([A-Za-z]{4}[A-Za-z0-9]{6})\b", p.get("name") or "")
+    if m and (p.get("descrizione_tipo_cliente") or "").startswith("Pub-"):
+        return m.group(1).lower() + "@istruzione.it"
+    return None
+
+
 def destinatari(azienda_id):
+    """Come _destinatari_base, piu' l'indirizzo istituzionale della scuola statale; se non si riesce a scegliere nessuno
+    (dirigente/DSGA ambigui) l'indirizzo istituzionale basta: il giro non si ferma piu' ad aspettare una persona."""
+    out, motivo = _destinatari_base(azienda_id)
+    ist = mail_istituzionale(azienda_id)
+    if ist and ist not in [e.lower() for e, _ in out]:
+        out = list(out) + [(ist, "Segreteria")]
+        motivo = (motivo + " + indirizzo istituzionale della scuola") if len(out) > 1 else "indirizzo istituzionale della scuola"
+    return out, motivo
+
+
+def _destinatari_base(azienda_id):
     """(lista di (email, nome), motivo). Lista vuota = da decidere a mano."""
     # 1. chi ha chiesto il preventivo dal sito (affare «Formazione»)
     ass = C.hs("/crm/v4/objects/companies/%s/associations/deals" % azienda_id).get("results", [])

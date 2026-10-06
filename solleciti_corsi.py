@@ -40,7 +40,57 @@ def nominati(evento_id, ordine):
     return r.get("total", len(r.get("results", [])))
 
 
+GIORNI_SOLLECITO_ORDINE = 3      # primo sollecito: 3 giorni dopo l'ordine, per i corsi ancora senza partecipanti e lontani piu' di 72 ore
+
+
+def sollecito_anticipato(ordini, gia, auto, prova):
+    """Una sola e-mail per ORDINE (non per corso), con i corsi che non hanno ancora nessun partecipante indicato e che
+    iniziano fra piu' di 72 ore (quelli piu' vicini li seguono i solleciti a 3 e 1 giorno). Una volta sola per ordine."""
+    per_ordine = {}
+    for o in ordini:                                   # solo righe gia' invitate e ordini non ancora sollecitati
+        if "%s|%s|inviato" % (o["num"], o["sku"]) not in gia or "%s|sollecito_ordine" % o["num"] in gia:
+            continue
+        per_ordine.setdefault(o["num"], []).append(o)
+    for num, righe in per_ordine.items():
+        deal = righe[0]["deal"]
+        creato = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % deal)["properties"].get("createdate")
+        if not creato or _ore_da(creato) < GIORNI_SOLLECITO_ORDINE * 24:
+            continue
+        voci = []
+        for o in righe:
+            base = O.CORSO.match(o["sku"]).group(1)
+            ev, _ = O.evento_per(base, crea=False, prova=True)
+            if not ev:
+                continue
+            p = ev["properties"] if "start_datetime" in ev["properties"] else C.hs(
+                "/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,annullato" % (EV, ev["id"]))["properties"]
+            if not p.get("start_datetime") or p.get("annullato") == "true" or _ore_a(p["start_datetime"]) <= ORE_3G:
+                continue
+            if nominati(ev["id"], o["num"]) > 0:
+                continue
+            v, _ = O.prepara(o, True)
+            if v and not v.get("mancante"):
+                voci.append(v)
+        if not voci:
+            continue
+        voci = voci[:8]
+        dest, motivo = O.destinatari(voci[0]["azienda_id"])
+        if not dest:
+            print("  [solleciti] %s: destinatari da decidere (%s)" % (num, motivo))
+            continue
+        agente = O.email_agente(deal)
+        cc = O.CC_FISSI + ([agente] if agente and agente not in O.CC_FISSI else [])
+        dati = O.dati_email(voci)
+        dati["oggetto"] = ("Promemoria: indicate chi partecipa al corso «%s»" % voci[0]["corso"]) if len(voci) == 1 else "Promemoria: indicate chi partecipa ai vostri corsi"
+        print("  [solleciti] ordine %s: %d corsi senza partecipanti -> %s%s" % (num, len(voci), ", ".join(e for e, _ in dest), " [prova]" if prova or not auto else ""))
+        if prova or not auto:
+            continue
+        O.invia([e for e, _ in dest], cc, dati)
+        O.segna("%s|sollecito_ordine" % num)
+
+
 def solleciti(ordini, auto, prova):
+    sollecito_anticipato(ordini, O.registro(), auto, prova)
     gia = O.registro()
     ora_ordine = {}
     senza = []                                  # per l'avviso interno
