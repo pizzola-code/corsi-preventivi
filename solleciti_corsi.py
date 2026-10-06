@@ -40,6 +40,50 @@ def nominati(evento_id, ordine):
     return r.get("total", len(r.get("results", [])))
 
 
+def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
+    """Compito in HubSpot + SMS all'agente dell'ordine (proprietario dell'affare ERP): la scuola non ha ancora indicato i
+    partecipanti. Una volta per chiave (registro). In prova (ALLERTA_PROVA_OWNER=<id proprietario>) tutto va a quella persona."""
+    gia = O.registro()
+    if chiave in gia:
+        return False
+    owner = os.environ.get("ALLERTA_PROVA_OWNER") or C.hs("/crm/v3/objects/deals/%s?properties=hubspot_owner_id" % deal_id)["properties"].get("hubspot_owner_id")
+    if not owner:
+        print("  [allerta agente] %s: l'ordine non ha un agente" % scuola)
+        return False
+    domani = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).strftime("%Y-%m-%dT06:00:00Z")
+    elenco = "\n".join("- %s (%s)" % (c["corso"], c["quando"]) for c in corsi)
+    corpo = ("La scuola non ha ancora indicato chi partecipa ai corsi ordinati:\n%s\n\n"
+             "L'invito con il link per indicare i partecipanti e' gia' partito alla scuola. Puoi ricordarglielo con una telefonata: "
+             "basta il link nell'e-mail ricevuta (anche nella posta indesiderata). Se la scuola ti manda i nomi, inoltrali all'assistenza corsi "
+             "con scuola, corso, nome, cognome ed e-mail." % elenco)
+    t = C.hs("/crm/v3/objects/tasks", {"properties": {
+        "hs_task_subject": "Corsi: %s non ha ancora indicato i partecipanti" % scuola,
+        "hs_task_body": corpo.replace("\n", "<br>"), "hs_task_type": "CALL", "hs_task_priority": "HIGH",
+        "hs_task_status": "NOT_STARTED", "hubspot_owner_id": owner, "hs_timestamp": domani}}, "POST")
+    if t.get("id"):
+        C.lega("tasks", t["id"], "deals", deal_id)
+        if azienda_id:
+            C.lega("tasks", t["id"], "companies", azienda_id)
+    # SMS: il cellulare dell'agente e' nella sua scheda contatto (stesso indirizzo e-mail del proprietario)
+    esito = "senza cellulare"
+    try:
+        mail = C.hs("/crm/v3/owners/%s?idProperty=id" % owner).get("email")
+        r = C.hs("/crm/v3/objects/contacts/search", {"filterGroups": [{"filters": [{"propertyName": "email", "operator": "EQ", "value": mail}]}],
+                 "properties": ["mobilephone", "phone"], "limit": 1}, "POST").get("results", [])
+        num = None
+        for k in ("mobilephone", "phone"):
+            num = num or C.numero_cellulare((r[0]["properties"].get(k) if r else None) or "")
+        if num:
+            testo = ("Spaggiari: la scuola %s non ha ancora indicato i partecipanti ai corsi ordinati. "
+                     "Puoi ricordarglielo? Dettagli nel compito su HubSpot." % scuola[:40])
+            esito = C.invia_sms(num, testo[:300])
+    except Exception as e:
+        esito = "errore SMS (%s)" % type(e).__name__
+    O.segna(chiave)
+    print("  [allerta agente] %s -> compito %s, SMS: %s" % (scuola, t.get("id"), esito))
+    return True
+
+
 GIORNI_SOLLECITO_ORDINE = 3      # primo sollecito: 3 giorni dopo l'ordine, per i corsi ancora senza partecipanti e lontani piu' di 72 ore
 
 
@@ -87,6 +131,7 @@ def sollecito_anticipato(ordini, gia, auto, prova):
             continue
         O.invia([e for e, _ in dest], cc, dati)
         O.segna("%s|sollecito_ordine" % num)
+        allerta_agente(deal, voci[0]["azienda_id"], O.pulito(voci[0]["azienda"].get("name")), voci, "%s|allerta_agente" % num)
 
 
 def solleciti(ordini, auto, prova):
@@ -124,6 +169,8 @@ def solleciti(ordini, auto, prova):
             da_mandare = k3
         # avvisi al team
         nome = O.pulito(v["azienda"].get("name"))
+        if ore <= ORE_1G and not prova and auto:
+            allerta_agente(o["deal"], v["azienda_id"], nome, [v], "%s|%s|allerta_agente_1g" % (o["num"], o["sku"]))
         if ore <= ORE_ALLARME and a6 not in gia:
             senza.append((a6, "<b>%s</b> · %s · %s · il corso inizia fra circa %d ore, la nomina si chiude 4 ore prima" % (nome, v["corso"], v["quando"], round(ore))))
         elif ore <= ORE_1G and a1 not in gia and ore > ORE_ALLARME:

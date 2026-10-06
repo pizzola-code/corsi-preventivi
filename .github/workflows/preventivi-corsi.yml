@@ -87,6 +87,7 @@ jobs:
           CORSI_INVIO_AUTOMATICO: ${{ vars.CORSI_INVIO_AUTOMATICO }}
           CORSI_BCC: ${{ vars.CORSI_BCC }}
           CORSI_AVVISO_A: ${{ vars.CORSI_AVVISO_A }}
+          MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
         run: python corsi_ordini.py
 
       # Il registro degli invii va salvato subito: e' cio' che impedisce di
