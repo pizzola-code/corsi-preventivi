@@ -577,6 +577,11 @@ def main():
         solleciti_corsi.solleciti(os_, auto, prova)
     except Exception as e:
         print("  ERRORE nei solleciti: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
+        import preventivi_in_scadenza
+        preventivi_in_scadenza.avvisi(os_, prova)
+    except Exception as e:
+        print("  ERRORE nell'avviso preventivi in scadenza: %s %s" % (type(e).__name__, str(e)[:160]))
     spedisci_riepilogo()
 
 
