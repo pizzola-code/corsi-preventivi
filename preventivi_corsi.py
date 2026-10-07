@@ -207,6 +207,58 @@ def righe_da(testo):
         fuori.append(v)
     return fuori
 
+CHIUSURA_NOMINE_MIN = 30      # come la nomina: da 30 minuti prima dell'inizio il corso non e' piu' acquistabile
+
+
+def corsi_gia_iniziati(righe):
+    """Righe del carrello che riguardano un corso gia' iniziato (o a meno di 30 minuti dall'inizio), dal palinsesto.
+    Il blocco della pagina funziona solo nel browser: una pagina rimasta aperta o una richiesta inviata in altro modo
+    puo' ancora portare un corso passato (audit 7/10, caso IIS Eco)."""
+    try:
+        pal = json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))
+    except Exception:
+        return []
+    adesso = datetime.datetime.now(datetime.timezone.utc)
+    inizi = {}
+    for x in pal:
+        a, m, g = map(int, x["data"].split("-"))
+        h, mi = map(int, x["inizio"].split(":"))
+        legale = datetime.datetime(a, m, g, h, mi) < datetime.datetime(2026, 10, 25, 1, 0)
+        inizi[x["codice"].upper()] = datetime.datetime(a, m, g, h - (2 if legale else 1), mi, tzinfo=datetime.timezone.utc)
+    fuori = []
+    for r in righe:
+        cod = (r.get("codice") or "").upper().split()[0] if r.get("codice") else ""
+        ini = inizi.get(cod)
+        if ini and ini - datetime.timedelta(minutes=CHIUSURA_NOMINE_MIN) <= adesso:
+            fuori.append(r)
+    return fuori
+
+
+def sconto_per(n):
+    return 30 if n > 5 else (20 if n >= 4 else (10 if n >= 3 else 0))      # stesse soglie della pagina
+
+
+def avviso_corsi_passati(scuola, email, tolti, restano):
+    utente, chiave = os.environ.get("SMTP_CORSI_USER"), os.environ.get("SMTP_CORSI_PASS")
+    if not (utente and chiave):
+        return
+    m = EmailMessage()
+    m["From"] = "Spaggiari <%s>" % MITTENTE
+    m["To"] = CONTROLLO
+    m["Subject"] = "Corsi: richiesta con corsi gia' svolti - %s" % scuola
+    elenco = "\n".join("- %s (%s)" % (r["corso"], r.get("quando") or "") for r in tolti)
+    m.set_content("La richiesta di preventivo di %s (%s) conteneva corsi gia' iniziati o svolti:\n%s\n\n%s\n"
+                  % (scuola, email, elenco,
+                     ("Li ho tolti dal preventivo e ho ricalcolato lo sconto; il preventivo e' partito con gli altri %d corsi." % restano)
+                     if restano else
+                     "Non restano altri corsi: NESSUN preventivo e' partito. Serve scrivere alla scuola e proporre le prossime date."))
+    s = smtplib.SMTP(SMTP_HOST, SMTP_PORTA, timeout=60)
+    s.starttls(context=ssl.create_default_context())
+    s.login(utente, chiave)
+    s.send_message(m)
+    s.quit()
+
+
 # Registro degli invii: l'impronta (sha256) di ogni richiesta gia' servita.
 # Vive nel repository, quindi non dipende dal CRM: se qualcuno cancella la
 # trattativa, la scuola non riceve il preventivo una seconda volta. Contiene
@@ -645,6 +697,26 @@ def lavora(inv, prova):
     stato, ripresa = stato_richiesta(chiave)
     if stato == "fatta":
         return
+    # Guardia (audit 7/10): corsi gia' iniziati nella richiesta -> fuori dal preventivo, avviso interno
+    tolti = corsi_gia_iniziati(righe)
+    if tolti and not prova:
+        codici = {r["codice"] for r in tolti}
+        righe = [r for r in righe if r["codice"] not in codici]
+        print("  corsi gia' iniziati tolti dalla richiesta: %s" % ", ".join(sorted(codici)))
+        try:
+            avviso_corsi_passati(scuola, v.get("email", ""), tolti, len(righe))
+        except Exception as e:
+            print("  avviso corsi passati non inviato (%s)" % type(e).__name__)
+        if not righe:
+            registra(chiave)
+            print("  nessun corso acquistabile: nessun preventivo")
+            return
+        sconto_nuovo = sconto_per(len(righe))
+        v["sconto_corsi"] = str(sconto_nuovo)
+        v["numero_corsi"] = str(len(righe))
+        v["corsi_richiesti"] = "\n".join(l for l in (v.get("corsi_richiesti") or "").split("\n")
+                                         if not any(c and c in l for c in codici))
+        v["totale_preventivo_corsi"] = str(round(sum(r["prezzo"] for r in righe) * (100 - sconto_nuovo) / 100, 2))
     sconto = int(v.get("sconto_corsi") or 0)
     lordo = sum(r["prezzo"] for r in righe)
     netto = round(lordo * (100 - sconto) / 100, 2)
