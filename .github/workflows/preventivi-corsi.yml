@@ -90,6 +90,25 @@ jobs:
           MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
         run: python corsi_ordini.py
 
+      # Link al formatore (Andrea, 7/10/2026): primo invio fino a 100 minuti prima, secondo a 25 minuti dall'inizio, con link nuovo.
+      # Qui, nel repository pubblico (minuti gratuiti), perche' il giro parte ogni minuto da cron-job.org: i giri programmati di GitHub
+      # ritardano anche di 30 minuti. Un giro su 5 basta (minuti 0-2 di ogni cinque: tre possibilita'); l'invio e' a prova di doppioni.
+      - uses: actions/setup-node@v4
+        if: always()
+        with:
+          node-version: '22'
+      - name: Corsi -> link al formatore
+        if: always()
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          LOG_RISERVATO: '1'
+        run: |
+          m=$(date +%M); m=$((10#$m % 5))
+          if [ "$m" -le 2 ]; then node link_formatore.js; fi
+
       # Il registro degli invii va salvato subito: e' cio' che impedisce di
       # rimandare un preventivo se la trattativa viene cancellata. I giri sono
       # in fila (concurrency), quindi non si pestano.
