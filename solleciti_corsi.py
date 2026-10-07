@@ -50,6 +50,7 @@ def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
     if not owner:
         print("  [allerta agente] %s: l'ordine non ha un agente" % scuola)
         return False
+    O.segna(chiave)          # PRIMA di creare compito e SMS: al massimo una volta, anche se un passo seguente va in errore
     domani = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).strftime("%Y-%m-%dT06:00:00Z")
     elenco = "\n".join("- %s (%s)" % (c["corso"], c["quando"]) for c in corsi)
     corpo = ("La scuola non ha ancora indicato chi partecipa ai corsi ordinati:\n%s\n\n"
@@ -61,9 +62,13 @@ def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
         "hs_task_body": corpo.replace("\n", "<br>"), "hs_task_type": "CALL", "hs_task_priority": "HIGH",
         "hs_task_status": "NOT_STARTED", "hubspot_owner_id": owner, "hs_timestamp": domani}}, "POST")
     if t.get("id"):
-        C.lega("tasks", t["id"], "deals", deal_id)
-        if azienda_id:
-            C.lega("tasks", t["id"], "companies", azienda_id)
+        for tipo, idx in (("deals", deal_id), ("companies", azienda_id)):
+            if not idx:
+                continue
+            try:
+                C.lega("tasks", t["id"], tipo, idx)
+            except Exception as e:
+                print("  [allerta agente] collegamento %s non riuscito (%s)" % (tipo, type(e).__name__))
     # SMS: il cellulare dell'agente e' nella sua scheda contatto (stesso indirizzo e-mail del proprietario)
     esito = "senza cellulare"
     try:
@@ -79,7 +84,6 @@ def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
             esito = C.invia_sms(num, testo[:300])
     except Exception as e:
         esito = "errore SMS (%s)" % type(e).__name__
-    O.segna(chiave)
     print("  [allerta agente] %s -> compito %s, SMS: %s" % (scuola, t.get("id"), esito))
     return True
 
