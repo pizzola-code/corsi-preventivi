@@ -375,7 +375,7 @@ def prepara(o, prova):
     link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id, tardi)
     return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
             "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
-            "chiusura": chiusura(p["start_datetime"], tardi), "link": link}, None
+            "chiusura": chiusura(p["start_datetime"], tardi), "link": link, "inizio_iso": p["start_datetime"]}, None
 
 
 def dati_email(voci):
@@ -388,6 +388,28 @@ def dati_email(voci):
         v = voci[i - 1] if i - 1 < len(voci) else None
         d["corso_%d" % i], d["quando_%d" % i], d["link_%d" % i] = (v["corso"], v["quando"], v["link"]) if v else ("", "", "")
     return d
+
+
+def possibile_duplicato(num, azienda_id, skus, gia):
+    """Numero di un altro ordine della stessa scuola, con gli stessi corsi, gia' invitato e creato negli ultimi 10 giorni."""
+    try:
+        tutti = {}
+        for o in ordini_nuovi(30):
+            if o["num"] != num and "%s|%s|inviato" % (o["num"], o["sku"]) in gia:
+                tutti.setdefault(o["num"], {"deal": o["deal"], "sku": set()})["sku"].add(o["sku"])
+        limite = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=10)).isoformat()
+        for n, x in tutti.items():
+            if not skus <= x["sku"]:
+                continue
+            az = C.hs("/crm/v4/objects/deals/%s/associations/companies" % x["deal"]).get("results", [])
+            if not az or str(az[0]["toObjectId"]) != str(azienda_id):
+                continue
+            creato = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % x["deal"])["properties"].get("createdate") or ""
+            if creato >= limite[:19]:
+                return n
+    except Exception as e:
+        print("  controllo doppioni non riuscito (%s)" % type(e).__name__)
+    return None
 
 
 def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
@@ -411,6 +433,38 @@ def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
                 "L'ordine <b>%s</b> (%s) riguarda il corso %s, ma %s." % (o["num"], pulito(v["azienda"].get("name")), o["sku"], motivo),
                 "Quando l'evento esiste il giro prepara da solo il link per la scuola."])
             segna(k)
+    # Guardia 1 (audit 7/10): corso gia' iniziato o a meno di 30 minuti dall'inizio -> il link di nomina sarebbe gia' chiuso.
+    # Non si invita la scuola: avviso interno, si decide a mano (nuova data, partecipazione fuori orario con lo strumento interno).
+    ora = datetime.datetime.now(datetime.timezone.utc)
+    validi = []
+    for o, v in voci:
+        ini = datetime.datetime.fromisoformat(v["inizio_iso"].replace("Z", "+00:00"))
+        if not destinatari_forzati and ini - datetime.timedelta(minutes=CHIUSURA_MIN) <= ora:
+            k = "%s|%s|avvisato-corso-iniziato" % (o["num"], o["sku"])
+            if k not in gia and not prova:
+                avviso_interno("Ordine per un corso gia' iniziato o imminente: %s" % o["num"], [
+                    "L'ordine <b>%s</b> (%s) riguarda <b>%s</b> (%s), arrivato a corso iniziato o a meno di 30 minuti dall'inizio." % (
+                        o["num"], pulito(v["azienda"].get("name")), v["corso"], v["quando"]),
+                    "Non ho mandato l'invito alla scuola: il link di nomina sarebbe gia' chiuso. Serve scegliere a mano: nuova data del corso oppure partecipazione "
+                    "subito con lo strumento interno (strumenti/assistenza-nomine-corsi)."])
+                segna(k)
+            print("     %s: corso gia' iniziato o imminente, nessun invito" % o["sku"])
+            continue
+        validi.append((o, v))
+    voci = validi
+    # Guardia 2 (audit 7/10): stesso insieme di corsi gia' ordinato dalla stessa scuola da meno di 10 giorni (doppione dell'ERP):
+    # niente seconda e-mail alla scuola; avviso interno, si decide a mano (--ordine N --a ... --invia).
+    if voci and not destinatari_forzati and not prova:
+        dup = possibile_duplicato(num, voci[0][1]["azienda_id"], {o["sku"] for o, _ in voci}, gia)
+        if dup:
+            k = "%s|avvisato-duplicato" % num
+            if k not in gia:
+                avviso_interno("Ordine di corsi forse doppio: %s" % num, [
+                    "L'ordine <b>%s</b> di %s ha gli stessi corsi dell'ordine <b>%s</b>, gia' invitato." % (num, pulito(voci[0][1]["azienda"].get("name")), dup),
+                    "Non ho mandato un secondo invito. Se e' davvero un ordine nuovo (altri posti): <code>python corsi_ordini.py --ordine %s --invia</code>." % num])
+                segna(k)
+            print("     ordine %s: possibile doppione di %s, nessun invito" % (num, dup))
+            return
     if not voci:
         return
     schede = [v for _, v in voci]
