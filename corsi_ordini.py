@@ -51,7 +51,7 @@ CC_FISSI = []                              # in copia visibile solo l'agente di 
 # indirizzi nelle variabili del repository (CORSI_BCC, CORSI_AVVISO_A): il codice e' pubblico, gli indirizzi no
 BCC = [x for x in os.environ.get("CORSI_BCC", "").replace(" ", "").split(",") if x]
 AVVISO_A = [x for x in os.environ.get("CORSI_AVVISO_A", "").replace(" ", "").split(",") if x]
-CHIUSURA_ORE = 4
+CHIUSURA_MIN = 30                          # nomine aperte fino a 30 minuti prima dell'inizio (come la funzione di nomina)
 REGISTRO = os.path.join(QUI, "ordini_corsi_gestiti.txt")
 GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre",
@@ -112,13 +112,11 @@ MINUTI_ORDINE_TARDIVO = 30   # ordine arrivato dopo la chiusura normale: si nomi
 
 
 def e_tardivo(iso_inizio):
-    ini = datetime.datetime.fromisoformat(iso_inizio.replace("Z", "+00:00"))
-    ora = datetime.datetime.now(datetime.timezone.utc)
-    return ini - datetime.timedelta(hours=CHIUSURA_ORE) < ora < ini - datetime.timedelta(minutes=MINUTI_ORDINE_TARDIVO)
+    return False        # con la chiusura a 30 minuti per tutti il codice speciale non serve piu'
 
 
 def chiusura(iso_inizio, minuti_prima=None):
-    c = ora_italiana(iso_inizio) - (datetime.timedelta(minutes=minuti_prima) if minuti_prima is not None else datetime.timedelta(hours=CHIUSURA_ORE))
+    c = ora_italiana(iso_inizio) - (datetime.timedelta(minutes=minuti_prima) if minuti_prima is not None else datetime.timedelta(minutes=CHIUSURA_MIN))
     return "alle %s di %s %d %s" % (c.strftime("%H:%M"), GIORNI[c.weekday()], c.day, MESI[c.month - 1])
 
 
