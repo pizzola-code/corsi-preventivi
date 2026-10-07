@@ -51,6 +51,20 @@ def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
         print("  [allerta agente] %s: l'ordine non ha un agente" % scuola)
         return False
     O.segna(chiave)          # PRIMA di creare compito e SMS: al massimo una volta, anche se un passo seguente va in errore
+    # seconda difesa: se il registro non si e' salvato, HubSpot dice comunque se l'agente ha gia' il compito (ultime 20 ore)
+    try:
+        esistenti = C.hs("/crm/v4/objects/deals/%s/associations/tasks" % deal_id).get("results", [])
+        if esistenti:
+            r = C.hs("/crm/v3/objects/tasks/batch/read", {"properties": ["hs_task_subject", "hs_createdate"],
+                     "inputs": [{"id": str(x["toObjectId"])} for x in esistenti[:50]]}, "POST").get("results", [])
+            limite = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=20)).isoformat()
+            for x in r:
+                p = x["properties"]
+                if (p.get("hs_task_subject") or "").startswith("Corsi:") and "non ha ancora indicato" in (p.get("hs_task_subject") or "")                         and (p.get("hs_createdate") or "") >= limite[:19]:
+                    print("  [allerta agente] %s: compito gia' presente, non ne creo un altro" % scuola)
+                    return False
+    except Exception as e:
+        print("  [allerta agente] controllo compiti esistenti non riuscito (%s)" % type(e).__name__)
     domani = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).strftime("%Y-%m-%dT06:00:00Z")
     elenco = "\n".join("- %s (%s)" % (c["corso"], c["quando"]) for c in corsi)
     corpo = ("La scuola non ha ancora indicato chi partecipa ai corsi ordinati:\n%s\n\n"
