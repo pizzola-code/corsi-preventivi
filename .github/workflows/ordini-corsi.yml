@@ -1,0 +1,58 @@
+name: ordini-corsi
+
+# Ordini dei corsi in diretta -> evento, link di nomina, e-mail alla scuola, solleciti, avvisi all'agente.
+# Separato da preventivi-corsi (8/10/2026): il controllo degli ordini dura 2-4 minuti e, nello stesso giro dei
+# preventivi, li faceva aspettare fino a 4-5 minuti. Ritmo dato da cron-job.org (workflow_dispatch ogni 5 minuti);
+# il cron interno resta come rete di sicurezza.
+on:
+  workflow_dispatch:
+    inputs:
+      prova:
+        description: "Solo prova: elenca senza creare ne' inviare niente"
+        type: boolean
+        default: false
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ordini-corsi
+  cancel-in-progress: false
+
+jobs:
+  ordini:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Ordini dei corsi in diretta -> evento, link di nomina, e-mail alla scuola dal portale HubSpot.
+      # L'invio e' acceso dalla variabile CORSI_INVIO_AUTOMATICO (repository -> Variables): 1 = acceso.
+      - name: Ordini corsi -> evento e link di nomina
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          CHIAVE_NOMINE_CORSI: ${{ secrets.CHIAVE_NOMINE_CORSI }}
+          CORSI_INVIO_AUTOMATICO: ${{ vars.CORSI_INVIO_AUTOMATICO }}
+          CORSI_BCC: ${{ vars.CORSI_BCC }}
+          CORSI_AVVISO_A: ${{ vars.CORSI_AVVISO_A }}
+          MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
+          FORZA: '1'      # il ritmo lo da' cron-job.org: niente filtro sul minuto
+        run: python corsi_ordini.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
+
+      - name: Salva il registro degli ordini
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain ordini_corsi_gestiti.txt)" ]; then
+            git config user.name "motore-preventivi"
+            git config user.email "no_reply@spaggiari.eu"
+            git add ordini_corsi_gestiti.txt
+            git commit -m "registro: ordini corsi"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
+          fi

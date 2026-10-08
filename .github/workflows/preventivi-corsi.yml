@@ -75,20 +75,8 @@ jobs:
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
         run: python avvisa_eventi.py
 
-      # Ordini dei corsi in diretta -> evento, link di nomina, e-mail alla scuola dal portale HubSpot.
-      # L'invio e' acceso dalla variabile CORSI_INVIO_AUTOMATICO (repository -> Variables): 1 = acceso.
-      - name: Ordini corsi -> evento e link di nomina
-        if: always()
-        env:
-          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
-          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
-          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
-          CHIAVE_NOMINE_CORSI: ${{ secrets.CHIAVE_NOMINE_CORSI }}
-          CORSI_INVIO_AUTOMATICO: ${{ vars.CORSI_INVIO_AUTOMATICO }}
-          CORSI_BCC: ${{ vars.CORSI_BCC }}
-          CORSI_AVVISO_A: ${{ vars.CORSI_AVVISO_A }}
-          MITTO_API_KEY: ${{ secrets.MITTO_API_KEY }}
-        run: python corsi_ordini.py
+      # Gli ordini dei corsi (evento, link di nomina, solleciti, avvisi agente) girano nel workflow ordini-corsi.yml:
+      # il controllo degli ordini dura 2-4 minuti e qui faceva aspettare i preventivi (8/10/2026).
 
       # Link al formatore (Andrea, 7/10/2026): primo invio fino a 100 minuti prima, secondo a 25 minuti dall'inizio, con link nuovo.
       # Qui, nel repository pubblico (minuti gratuiti), perche' il giro parte ogni minuto da cron-job.org: i giri programmati di GitHub
