@@ -90,3 +90,6 @@ ambiguo|2026EN16785 - ERP
 2026EN17020|allerta_agente
 2026EN17020|WBRELEPVW-3|sollecito3
 rimbalzo|stefania.dacc@gmail.com
+2026EN17020|WBRELEPVW-3|allerta_agente_1g
+2026EN17020|WBRELEPVW-3|sollecito1
+2026EN17020|WBRELEPVW-3|allarme1
