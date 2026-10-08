@@ -29,7 +29,8 @@ from email.message import EmailMessage
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 TOK = os.environ["HUBSPOT_TOKEN"]
 PIPELINE = "4128670920"
-A = "pizzola@spaggiari.eu"
+# destinatari: variabile del repository CORSI_REPORT_A (stessa del riepilogo della sera); il repository e' pubblico, niente indirizzi nel codice
+A = ", ".join(x.strip() for x in os.environ.get("CORSI_REPORT_A", "").split(",") if x.strip()) or "pizzola@spaggiari.eu"
 MITTENTE = "no_reply@spaggiari.eu"
 PROVA = "--prova" in sys.argv
 PETROLIO = "#06484b"
@@ -224,6 +225,6 @@ m.add_alternative(h, subtype="html")
 s = smtplib.SMTP("smtp.hubapi.com", 587, timeout=60)
 s.starttls(context=ssl.create_default_context())
 s.login(os.environ["SMTP_CORSI_USER"], os.environ["SMTP_CORSI_PASS"])
-s.send_message(m)
+s.send_message(m, to_addrs=[x.strip() for x in A.split(",")])
 s.quit()
-print("mandata a", A)
+print("mandata a %d destinatari" % len(A.split(",")))

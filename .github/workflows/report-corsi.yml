@@ -1,6 +1,6 @@
 name: report-corsi
 # Andrea 27/9/2026: panoramica quotidiana delle richieste di preventivo dal catalogo
-# corsi (pipeline Formazione), via mail a pizzola@spaggiari.eu.
+# corsi (pipeline Formazione), via mail a tutti i destinatari della variabile CORSI_REPORT_A (8/10/2026: prima solo pizzola@).
 # 05:30 UTC = 07:30 a Roma con l'ora legale; dal 25/10 esce alle 06:30.
 on:
   workflow_dispatch:
@@ -20,4 +20,5 @@ jobs:
           HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
           SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          CORSI_REPORT_A: ${{ vars.CORSI_REPORT_A }}
         run: python report_corsi.py
