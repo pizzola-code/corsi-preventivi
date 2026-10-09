@@ -101,3 +101,5 @@ rimbalzo|stefania.dacc@gmail.com
 525857530092|WBRELEPVW|avviso_preventivo
 525857340618|WBRELEPVW|avviso_preventivo
 ambiguo|2026EN17204 - ERP
+2026EN17204|WBRELEPVW-1|avvisato-corso-iniziato
+2026EN17204|WBRELEPVWO-1|inviato
