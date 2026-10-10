@@ -113,3 +113,6 @@ ambiguo|2026EN17204 - ERP
 2026EN17214|WBRELEPLSD-I|sollecito3
 2026EN17002|sollecito_ordine
 2026EN17002|allerta_agente
+522873219272|WBRELEPLSD|avviso_preventivo
+522959409360|WBRELEPLSD|avviso_preventivo
+524365200570|WBRELEPLSD|avviso_preventivo
