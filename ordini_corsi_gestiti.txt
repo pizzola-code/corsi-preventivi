@@ -140,3 +140,4 @@ ambiguo|2026EN17204 - ERP
 2026EN17231|WBRELEPLSD-I|allarme1
 2026EN17006|sollecito_ordine
 2026EN17006|allerta_agente
+rimbalzo|chiara.ferrise@iczanica.edu.it
