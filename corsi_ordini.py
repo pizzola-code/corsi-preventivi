@@ -564,6 +564,11 @@ def main():
         except Exception as e:
             print("  ERRORE su %s: %s %s" % (num, type(e).__name__, str(e)[:160]))
     try:
+        import iscritti_default
+        iscritti_default.giro(prova)
+    except Exception as e:
+        print("  ERRORE negli iscritti di default: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
         controllo_consegne()
     except Exception as e:
         print("  ERRORE nel controllo consegne: %s %s" % (type(e).__name__, str(e)[:160]))
