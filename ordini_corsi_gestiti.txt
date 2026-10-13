@@ -200,3 +200,4 @@ rimbalzo|sara.albano@artisticogallizio.it
 2026EN17450|WBRELEVEGA-1|inviato
 2026EN17450|WBRELEVEGA-1|allerta_agente_1g
 2026EN17450|WBRELEVEGA-1|allarme1
+2026EN17354|WBRELESDP-1|sollecito3
