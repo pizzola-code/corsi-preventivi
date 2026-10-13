@@ -189,3 +189,8 @@ rimbalzo|sara.albano@artisticogallizio.it
 522959409360|WBRELESDP|avviso_preventivo
 524365200570|WBRELESDP|avviso_preventivo
 525339776234|WBRELESDP|avviso_preventivo
+2026EN17419|WBRELEVV-1|inviato
+2026EN17419|WBRELEVEGA-1|inviato
+2026EN17419|WBRELEVEGA-1|allerta_agente_1g
+2026EN17419|WBRELEVEGA-1|allarme1
+526161663189|WBRELEVEGA|avviso_preventivo
