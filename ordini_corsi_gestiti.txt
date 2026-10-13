@@ -171,3 +171,5 @@ rimbalzo|sara.albano@artisticogallizio.it
 2026EN17354|WBRELEPERB-1|allerta_agente_1g
 2026EN17354|WBRELEPERB-1|sollecito1
 2026EN17354|WBRELEPERB-1|allarme1
+2026EN17400|WBRELEPERB-1|allarme6
+2026EN17354|WBRELEPERB-1|allarme6
