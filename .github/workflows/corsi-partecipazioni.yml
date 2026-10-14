@@ -1,9 +1,11 @@
 name: corsi-partecipazioni
 # Andrea 14/10/2026: i corsi frequentati si scrivono sulla scheda contatto (corsi_frequentati, numero, ultimo corso).
-# Ogni sera alle 19:30 UTC (21:30 a Roma con l'ora legale), dopo le dirette e la sincronizzazione delle presenze.
+# Due giri al giorno: 05:45 UTC (presenze del giorno prima, assenze dopo 18 ore) e 19:30 UTC (dopo le dirette del giorno).
+# Scrive anche le iscrizioni ai prossimi corsi e chi era iscritto e non ha partecipato.
 on:
   workflow_dispatch:
   schedule:
+    - cron: '45 5 * * *'
     - cron: '30 19 * * *'
 jobs:
   partecipazioni:
