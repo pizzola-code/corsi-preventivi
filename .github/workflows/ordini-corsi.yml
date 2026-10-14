@@ -27,6 +27,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      # Un giro in coda parte con il commit di quando e' stato richiesto, quindi con un registro VECCHIO: il 14/10 tre registrazioni
+      # sono uscite due volte perche' il giro dopo non vedeva i segni del primo. Si riparte sempre dall'ultimo commit.
+      - name: Ultimo commit (registro aggiornato)
+        run: |
+          git fetch -q origin main
+          git reset -q --hard origin/main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
