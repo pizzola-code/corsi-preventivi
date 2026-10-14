@@ -211,3 +211,9 @@ rimbalzo|antonino.calanducci@artisticogallizio.it
 rimbalzo|elisabetta.gelardi@artisticogallizio.it
 2026EN17419|WBRELEVEGA-1|allarme6
 2026EN17354|WBRELEVEGA-1|allarme6
+2026EN16821|WBRELESDP-1|allerta_agente_1g
+2026EN16821|WBRELESDP-1|sollecito1
+2026EN17020|WBRELESDP-3|allerta_agente_1g
+2026EN17020|WBRELESDP-3|sollecito1
+2026EN16821|WBRELESDP-1|allarme1
+2026EN17020|WBRELESDP-3|allarme1
