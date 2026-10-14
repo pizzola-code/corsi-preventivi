@@ -217,3 +217,5 @@ rimbalzo|elisabetta.gelardi@artisticogallizio.it
 2026EN17020|WBRELESDP-3|sollecito1
 2026EN16821|WBRELESDP-1|allarme1
 2026EN17020|WBRELESDP-3|allarme1
+rimbalzo|giampiero.musumeci@artisticogallizio.it
+rimbalzo|gianni.pelassa@artisticogallizio.it
