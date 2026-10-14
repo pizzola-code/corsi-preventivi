@@ -1,0 +1,20 @@
+name: corsi-partecipazioni
+# Andrea 14/10/2026: i corsi frequentati si scrivono sulla scheda contatto (corsi_frequentati, numero, ultimo corso).
+# Ogni sera alle 19:30 UTC (21:30 a Roma con l'ora legale), dopo le dirette e la sincronizzazione delle presenze.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 19 * * *'
+jobs:
+  partecipazioni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Corsi frequentati sulla scheda contatto
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+        run: python corsi_partecipazioni.py
