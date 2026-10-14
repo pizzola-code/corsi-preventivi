@@ -228,3 +228,5 @@ rimbalzo|federica.procacci@artisticogallizio.it
 526172349673|WBRELEVV|avviso_preventivo
 526442772722|WBRELEVV|avviso_preventivo
 2026EN17518|WBRELEPVW-3|avvisato-corso-iniziato
+522921497816|WBRELESFT|avviso_preventivo
+524365200570|WBRELESFT|avviso_preventivo
