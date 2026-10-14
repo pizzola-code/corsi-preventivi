@@ -962,3 +962,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def ordini_revocati():
+    """Numeri d'ordine revocati dalla scuola (ordini_revocati.txt): il giro dei corsi li ignora."""
+    try:
+        return {r.split("|")[0].strip() for r in io.open(os.path.join(QUI, "ordini_revocati.txt"), encoding="utf-8")
+                if r.strip() and not r.startswith("#")}
+    except FileNotFoundError:
+        return set()

@@ -347,6 +347,8 @@ def ordini_nuovi(giorni=30):
             num = re.sub(r"\s*-\s*ERP\s*$", "", deal.get("dealname") or "")
             if not num.startswith(anno) or "vinto" not in (stadio.get(deal.get("dealstage"), "")).lower():
                 continue
+            if num in C.ordini_revocati():
+                continue
             voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": d["toObjectId"], "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
             try:
                 voce["qta"] += max(1, int(float(x["properties"].get("quantity") or 1)))     # 2 copie di un corso da 1 posto = 2 posti

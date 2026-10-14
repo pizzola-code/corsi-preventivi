@@ -106,6 +106,8 @@ def raccogli():
             st = stadi.get(deal.get("dealstage"), "")
             if "perso" in st:
                 continue
+            if re.sub(r"\s*-\s*ERP\s*$", "", deal.get("dealname") or "") in C.ordini_revocati():
+                continue
             venduto = "vinto" in st or "confermato" in st
             if not venduto and any(st.startswith(n) for n in NON_PREVENTIVATI):
                 continue
