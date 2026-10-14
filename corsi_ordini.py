@@ -46,6 +46,7 @@ EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio 
 EMAIL_PER_N = {1: 483372784867, 2: 485623493847, 3: 485623493841, 4: 485683370198,
                5: 485683370193, 6: 485683370187, 7: 485623493828, 8: 485615264984}
 PAGINA = "https://www.spaggiari.eu/indica-partecipanti-corso"
+EMAIL_REG = 484833839350               # «EVENTI - Registrazione disponibile (invio da API)»: per gli ordini arrivati a corso finito
 CORSO = re.compile(r"^WBRELE?([A-Z0-9]+)-(1|3|I)$")
 CC_FISSI = []                              # in copia visibile solo l'agente di zona
 # indirizzi nelle variabili del repository (CORSI_BCC, CORSI_AVVISO_A): il codice e' pubblico, gli indirizzi no
@@ -371,13 +372,22 @@ def prepara(o, prova):
     print("  %s · %s · posti %s · evento: %s" % (o["num"], o["sku"], posti or "illimitati", ev["id"] if ev else perche))
     if not ev:
         return {"azienda": azienda, "azienda_id": azienda_id, "mancante": perche}, perche
-    p = ev["properties"] if "start_datetime" in ev["properties"] else C.hs(
-        "/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime" % (EV, ev["id"]))["properties"]
-    tardi = MINUTI_ORDINE_TARDIVO if e_tardivo(p["start_datetime"]) else None
+    p = C.hs("/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,recording_link" % (EV, ev["id"]))["properties"]
+    # 14/10/2026 (Andrea: «qui devi mandare, non fermare»): ordine arrivato a diretta in corso o a meno di 30 minuti dall'inizio ->
+    # si invita lo stesso e la nomina resta aperta fino alla fine (chi entra in ritardo trova la riunione aperta); a diretta finita
+    # si manda la registrazione (vedi lavora_ordine).
+    ora_ = datetime.datetime.now(datetime.timezone.utc)
+    ini_ = datetime.datetime.fromisoformat(p["start_datetime"].replace("Z", "+00:00"))
+    fine_ = datetime.datetime.fromisoformat((p.get("end_datetime") or p["start_datetime"]).replace("Z", "+00:00"))
+    tardi = None
+    if ini_ - datetime.timedelta(minutes=CHIUSURA_MIN) <= ora_ < fine_:
+        tardi = -int((fine_ - ini_).total_seconds() // 60)      # x negativo: la nomina chiude N minuti DOPO l'inizio, cioe' alla fine
     link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id, tardi)
     return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
             "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
-            "chiusura": chiusura(p["start_datetime"], tardi), "link": link, "inizio_iso": p["start_datetime"]}, None
+            "chiusura": chiusura(p["start_datetime"], tardi), "link": link, "inizio_iso": p["start_datetime"],
+            "fine_iso": p.get("end_datetime") or p["start_datetime"], "finito": fine_ <= ora_, "registrazione": p.get("recording_link") or "",
+            "evento_nome": p.get("name") or "", "ev_id": ev["id"]}, None
 
 
 def dati_email(voci):
@@ -414,6 +424,48 @@ def possibile_duplicato(num, azienda_id, skus, gia):
     return None
 
 
+def invia_registrazioni(finiti, auto, prova, gia):
+    """Corso gia' svolto: la scuola riceve la registrazione (link del player Vimeo scritto negli eventi da vimeo_link_eventi.js).
+    Se la registrazione non c'e' ancora non si segna niente: il giro dopo riprova. Un avviso interno, una volta sola."""
+    for o, v in finiti:
+        k_inv = "%s|%s|inviato" % (o["num"], o["sku"])
+        if k_inv in gia:
+            continue
+        if not v.get("registrazione"):
+            k = "%s|%s|attesa-registrazione" % (o["num"], o["sku"])
+            print("     %s: corso finito, registrazione non ancora disponibile" % o["sku"])
+            if k not in gia and not prova:
+                avviso_interno("Ordine per un corso gia' svolto: %s" % o["num"], [
+                    "L'ordine <b>%s</b> (%s) riguarda <b>%s</b> (%s), arrivato a corso finito." % (o["num"], pulito(v["azienda"].get("name")), v["corso"], v["quando"]),
+                    "La registrazione non e' ancora disponibile: la mando alla scuola da solo appena c'e'."])
+                segna(k)
+            continue
+        dest, motivo = destinatari(v["azienda_id"])
+        agente = email_agente(o["deal"])
+        cc = CC_FISSI + ([agente] if agente and agente not in CC_FISSI else [])
+        if not dest:
+            k = "%s|avvisato-destinatari" % o["num"]
+            print("     destinatari: DA DECIDERE (%s)" % motivo)
+            if k not in gia and not prova:
+                avviso_interno("Ordine di corso: da scegliere a chi mandare la registrazione (%s)" % o["num"], [
+                    "L'ordine <b>%s</b> di %s riguarda <b>%s</b> (%s), gia' svolto: la registrazione e' pronta." % (o["num"], pulito(v["azienda"].get("name")), v["corso"], v["quando"]),
+                    "Non riesco a scegliere i destinatari da solo: %s." % motivo])
+                segna(k)
+            continue
+        print("     %s: corso finito, registrazione a %d destinatari (%s) · cc %d" % (o["sku"], len(dest), motivo, len(cc)))
+        if prova or not auto:
+            continue
+        ini = ora_italiana(v["inizio_iso"])
+        giorno = "%s %d %s %d" % (GIORNI[ini.weekday()], ini.day, MESI[ini.month - 1], ini.year)
+        corpo = {"emailId": EMAIL_REG, "message": {"to": dest[0][0], "cc": [x for x in ([e for e, _ in dest[1:]] + cc) if x], "bcc": BCC},
+                 "customProperties": {"nome": "", "evento": v["evento_nome"], "quando": giorno, "link": v["registrazione"]}}
+        r = C.hs("/marketing/v3/transactional/single-email/send", corpo, "POST")
+        print("     registrazione inviata da HubSpot:", r.get("status"), (r.get("statusId") or "")[:20])
+        if "_err" not in r:
+            segna(k_inv)
+            segna("%s|%s|registrazione-inviata" % (o["num"], o["sku"]))
+
+
 def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
     """Tutte le righe-corso di UN ordine: una sola e-mail alla scuola, con un blocco e un pulsante per corso."""
     num = righe[0]["num"]
@@ -435,25 +487,14 @@ def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
                 "L'ordine <b>%s</b> (%s) riguarda il corso %s, ma %s." % (o["num"], pulito(v["azienda"].get("name")), o["sku"], motivo),
                 "Quando l'evento esiste il giro prepara da solo il link per la scuola."])
             segna(k)
-    # Guardia 1 (audit 7/10): corso gia' iniziato o a meno di 30 minuti dall'inizio -> il link di nomina sarebbe gia' chiuso.
-    # Non si invita la scuola: avviso interno, si decide a mano (nuova data, partecipazione fuori orario con lo strumento interno).
-    ora = datetime.datetime.now(datetime.timezone.utc)
-    validi = []
+    # Corsi gia' finiti (ordine arrivato dopo la diretta): alla scuola si manda la REGISTRAZIONE, senza fermarsi (14/10/2026).
+    # Corsi in corso o imminenti: l'invito parte comunque, con nomina aperta fino alla fine (vedi prepara).
+    validi, finiti = [], []
     for o, v in voci:
-        ini = datetime.datetime.fromisoformat(v["inizio_iso"].replace("Z", "+00:00"))
-        if not destinatari_forzati and ini - datetime.timedelta(minutes=CHIUSURA_MIN) <= ora:
-            k = "%s|%s|avvisato-corso-iniziato" % (o["num"], o["sku"])
-            if k not in gia and not prova:
-                avviso_interno("Ordine per un corso gia' iniziato o imminente: %s" % o["num"], [
-                    "L'ordine <b>%s</b> (%s) riguarda <b>%s</b> (%s), arrivato a corso iniziato o a meno di 30 minuti dall'inizio." % (
-                        o["num"], pulito(v["azienda"].get("name")), v["corso"], v["quando"]),
-                    "Non ho mandato l'invito alla scuola: il link di nomina sarebbe gia' chiuso. Serve scegliere a mano: nuova data del corso oppure partecipazione "
-                    "subito con lo strumento interno (strumenti/assistenza-nomine-corsi)."])
-                segna(k)
-            print("     %s: corso gia' iniziato o imminente, nessun invito" % o["sku"])
-            continue
-        validi.append((o, v))
+        (finiti if v.get("finito") and not destinatari_forzati else validi).append((o, v))
     voci = validi
+    if finiti:
+        invia_registrazioni(finiti, auto, prova, gia)
     # Guardia 2 (audit 7/10): stesso insieme di corsi gia' ordinato dalla stessa scuola da meno di 10 giorni (doppione dell'ERP):
     # niente seconda e-mail alla scuola; avviso interno, si decide a mano (--ordine N --a ... --invia).
     if voci and not destinatari_forzati and not prova:
