@@ -209,3 +209,5 @@ rimbalzo|sara.albano@artisticogallizio.it
 2026EN17520|avvisato-destinatari
 rimbalzo|antonino.calanducci@artisticogallizio.it
 rimbalzo|elisabetta.gelardi@artisticogallizio.it
+2026EN17419|WBRELEVEGA-1|allarme6
+2026EN17354|WBRELEVEGA-1|allarme6
