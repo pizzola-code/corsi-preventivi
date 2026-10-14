@@ -219,3 +219,10 @@ rimbalzo|elisabetta.gelardi@artisticogallizio.it
 2026EN17020|WBRELESDP-3|allarme1
 rimbalzo|giampiero.musumeci@artisticogallizio.it
 rimbalzo|gianni.pelassa@artisticogallizio.it
+rimbalzo|alice.piras@artisticogallizio.it
+rimbalzo|marilena.ponzo@artisticogallizio.it
+rimbalzo|federica.procacci@artisticogallizio.it
+524365200570|WBRELEVV|avviso_preventivo
+526062030029|WBRELEVV|avviso_preventivo
+526063587565|WBRELEVV|avviso_preventivo
+526172349673|WBRELEVV|avviso_preventivo
