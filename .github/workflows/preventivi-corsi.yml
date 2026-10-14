@@ -29,6 +29,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      # Un giro in coda parte con il commit di quando e' stato richiesto, cioe' con registri VECCHI (14/10: invii doppi sui corsi).
+      - name: Ultimo commit (registri aggiornati)
+        run: |
+          git fetch -q origin main
+          git reset -q --hard origin/main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
