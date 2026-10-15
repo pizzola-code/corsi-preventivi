@@ -242,3 +242,4 @@ rimbalzo|federica.procacci@artisticogallizio.it
 2026EN17020|WBRELESDP-3|allarme6
 2026EN17669|WBRELESDAT-3|inviato
 2026EN17669|WBRELEVV-I|inviato
+2026EN17670|WBRELEVV-1|inviato
