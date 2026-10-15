@@ -320,13 +320,19 @@ def ordini():
 def consegne():
     da = int((time.time() - 2 * 86400) * 1000)
     r = cerca(REG, [{"propertyName": "ordine_corso", "operator": "HAS_PROPERTY"}, {"propertyName": "hs_createdate", "operator": "GTE", "value": str(da)}], ["email", "status", "ordine_corso"])
+    # 15/10: Gelardi era iscritta da 3 giorni e sfuggiva alla finestra: si guardano anche tutti gli iscritti ai corsi che devono ancora partire
+    ids_ = {x["id"] for x in r}
+    r += [x for x in cerca(REG, [{"propertyName": "ordine_corso", "operator": "HAS_PROPERTY"},
+                                 {"propertyName": "event_start_datetime", "operator": "GTE", "value": ADESSO.strftime("%Y-%m-%dT%H:%M:%SZ")}],
+                           ["email", "status", "ordine_corso"]) if x["id"] not in ids_]
     visti, cattivi = set(), []
     for x in r:
         p = x["properties"]; m = (p.get("email") or "").lower()
         if not m or m in visti or p.get("status") == "Canceled" or (p.get("ordine_corso") or "").startswith("PROVA"):
             continue
         visti.add(m)
-        ev = hs("/email/public/v1/events?recipient=%s&startTimestamp=%d&limit=60" % (urllib.parse.quote(m), da)).get("events", [])
+        ev = hs("/email/public/v1/events?recipient=%s&startTimestamp=%d&limit=60" % (urllib.parse.quote(m), da - 4 * 86400000)).get("events", [])
+        ev = ev if ev else []
         if any(e.get("type") in ("BOUNCE", "DROPPED") for e in ev) and not any(e.get("type") == "DELIVERED" for e in ev):
             loc, dom = m.split("@")
             # lezione 12/10: la scuola incolla due indirizzi senza separatore («stefano.carrer»+«ivana.capriolo»): se la fine dell'indirizzo
