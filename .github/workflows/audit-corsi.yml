@@ -52,10 +52,10 @@ jobs:
       - name: Salva il marcatore
         if: always()
         run: |
-          if [ -n "$(git status --porcelain audit_corsi_ultimo.txt)" ]; then
+          if [ -n "$(git status --porcelain audit_corsi_ultimo.txt audit_corsi_storico.json)" ]; then
             git config user.name "motore-preventivi"
             git config user.email "no_reply@spaggiari.eu"
-            git add audit_corsi_ultimo.txt
+            git add audit_corsi_ultimo.txt audit_corsi_storico.json
             git commit -m "audit corsi: fatto"
             for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
           fi

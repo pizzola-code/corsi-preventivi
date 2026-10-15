@@ -15,6 +15,9 @@ Controlli:
   7. CONSEGNE    conferme rimbalzate negli ultimi 2 giorni;
   8. CATALOGO    pagina online raggiungibile e con le stesse date del palinsesto;
   9. LAVORI      ultimi giri dei workflow dei corsi (GitHub Actions) senza fallimenti.
+ 10. ORDINI SOSPETTI  ordine ERP senza i corsi chiesti dal catalogo (righe di un altro prodotto); iscritti oltre i posti acquistati;
+ 11. APPRENDIMENTO    storico giornaliero (audit_corsi_storico.json): i problemi che tornano, quali si sistemano gia' da soli e
+                      quali sono candidati a una nuova regola automatica; il lunedi' anche il riepilogo della settimana.
 
 Sistemati da soli: riunione Zoom (titolo, orario, registrazione cloud), iscritti in attesa su Zoom (approvati), iscritti HubSpot assenti
 da Zoom (registrati con link personale), data leggibile mancante sulle iscrizioni.
@@ -271,9 +274,18 @@ def eventi_e_zoom():
         (ko if sp_rec else ok)("5 Dopo la diretta", ("registrazione Vimeo mancante: " + ", ".join(sp_rec)) if sp_rec else "registrazione presente per tutti i corsi svolti")
 
 
+_ORD = []
+
+
+def ordini_erp():
+    if not _ORD:
+        _ORD.append(O.ordini_nuovi(30))
+    return _ORD[0]
+
+
 def ordini():
     try:
-        os_ = O.ordini_nuovi(30)
+        os_ = ordini_erp()
     except Exception as e:
         ko("6 Ordini", "lettura ordini non riuscita: %s" % type(e).__name__); return
     gia = O.registro()
@@ -316,7 +328,18 @@ def consegne():
         visti.add(m)
         ev = hs("/email/public/v1/events?recipient=%s&startTimestamp=%d&limit=60" % (urllib.parse.quote(m), da)).get("events", [])
         if any(e.get("type") in ("BOUNCE", "DROPPED") for e in ev) and not any(e.get("type") == "DELIVERED" for e in ev):
-            cattivi.append(m.split("@")[0][:3] + "***@" + m.split("@")[1])
+            loc, dom = m.split("@")
+            # lezione 12/10: la scuola incolla due indirizzi senza separatore («stefano.carrer»+«ivana.capriolo»): se la fine dell'indirizzo
+            # coincide con quello di un altro iscritto dello stesso ordine, il resto e' l'indirizzo giusto
+            prop = ""
+            for y in r:
+                altro = (y["properties"].get("email") or "").lower()
+                if altro != m and y["properties"].get("ordine_corso") == x["properties"].get("ordine_corso") and altro.endswith("@" + dom):
+                    al = altro.split("@")[0]
+                    if loc.endswith(al) and len(loc) - len(al) >= 4:
+                        prop = " (probabile correzione: %s@%s)" % (loc[:-len(al)], dom)
+                        break
+            cattivi.append(m.split("@")[0][:3] + "***@" + dom + prop)
     (ko if cattivi else ok)("7 Consegne", ("conferme non consegnate (indirizzi da correggere): " + ", ".join(cattivi[:10])) if cattivi else "%d conferme degli ultimi 2 giorni: nessuna rimbalzata" % len(visti))
 
 
@@ -352,6 +375,119 @@ def lavori():
         ko("9 Lavori", "stato dei workflow non leggibile (%s)" % type(e).__name__)
 
 
+def ordini_sospetti():
+    """Lezioni del 15/10: (a) un ordine ERP con righe di un altro prodotto (WBRITA...) mentre la scuola ha chiesto corsi WBRELE dal
+    catalogo; (b) piu' iscritti dei posti acquistati."""
+    da = (ADESSO - D.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    sosp = []
+    try:
+        pl = hs("/crm/v3/pipelines/deals")
+        stadio = {x["id"]: x["label"] for p in pl["results"] for x in p["stages"]}
+        richieste = cerca("deals", [{"propertyName": "pipeline", "operator": "EQ", "value": "4128670920"},
+                                    {"propertyName": "createdate", "operator": "GTE", "value": da}], ["dealname", "createdate", "description"])
+        scuole = {}
+        for r_ in richieste:
+            if "WBRELE" not in (r_["properties"].get("description") or ""):
+                continue
+            az = hs("/crm/v4/objects/deals/%s/associations/companies" % r_["id"]).get("results", [])
+            if az:
+                scuole.setdefault(str(az[0]["toObjectId"]), r_["properties"].get("createdate") or da)
+        for cid, creata in scuole.items():
+            mie = []
+            for x in hs("/crm/v4/objects/companies/%s/associations/deals?limit=100" % cid).get("results", []):
+                dd = hs("/crm/v3/objects/deals/%s?properties=dealname,dealstage,createdate" % x["toObjectId"])
+                p_ = dd["properties"]
+                if re.match(r"^\d{4}EN\d+ - ERP$", p_.get("dealname") or "") and (p_.get("createdate") or "") >= creata and "vinto" in stadio.get(p_.get("dealstage"), "").lower():
+                    righe = [hs("/crm/v3/objects/line_items/%s?properties=hs_sku" % y["toObjectId"])["properties"].get("hs_sku") or ""
+                             for y in hs("/crm/v4/objects/deals/%s/associations/line_items" % x["toObjectId"]).get("results", [])]
+                    mie.append((p_["dealname"].replace(" - ERP", ""), righe))
+            if mie and not any(O.CORSO.match(r) for _, rr in mie for r in rr) and all(r.startswith("WBRITA") for _, rr in mie for r in rr):
+                sosp.append("%s: righe %s, ma la scuola ha chiesto corsi dal catalogo" % (mie[0][0], "/".join(sorted({r[:10] for _, rr in mie for r in rr}))))
+    except Exception as e:
+        ko("10 Ordini sospetti", "controllo righe d'ordine interrotto: %s" % type(e).__name__)
+        return
+    (ko if sosp else ok)("10 Ordini sospetti", ("ordine ERP con righe di un altro prodotto (da far correggere): " + " · ".join(sosp[:8])) if sosp else "nessun ordine ERP con righe diverse dai corsi richiesti")
+    # iscritti oltre i posti
+    try:
+        os_ = ordini_erp()
+        posti = collections.defaultdict(lambda: collections.defaultdict(int))
+        for o in os_:
+            m = O.CORSO.match(o["sku"]);
+            if m.group(2) == "I":
+                posti[o["num"]][m.group(1)] = -1
+            elif posti[o["num"]][m.group(1)] >= 0:
+                posti[o["num"]][m.group(1)] += int(m.group(2)) * max(1, o.get("qta") or 1)
+        oltre = []
+        for num, per in posti.items():
+            isc = cerca(REG, [{"propertyName": "ordine_corso", "operator": "EQ", "value": num}, {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}], ["event_name", "email"])
+            if not isc:
+                continue
+            tot_posti = sum(v for v in per.values() if v > 0)
+            if -1 not in per.values() and len(isc) > tot_posti:
+                oltre.append("%s (%d iscritti, %d posti)" % (num, len(isc), tot_posti))
+        (ko if oltre else ok)("10 Ordini sospetti", ("iscritti oltre i posti acquistati: " + ", ".join(oltre[:8])) if oltre else "nessun ordine con piu' iscritti dei posti")
+    except Exception as e:
+        ko("10 Ordini sospetti", "controllo posti interrotto: %s" % type(e).__name__)
+
+
+# ------------------------------------------------------------------ apprendimento
+STORICO = os.path.join(QUI, "audit_corsi_storico.json")
+# problemi che l'audit sa gia' sistemare da solo (aggiornare qui ogni volta che si automatizza qualcosa di nuovo)
+AUTOMATIZZATI = {"zoom_corretto", "iscritti_approvati", "iscritti_registrati", "data_leggibile"}
+CODICI = [  # (parte del testo, codice)
+    (r"evento .* mancante|con codice doppio", "eventi_doppi_o_mancanti"), (r"date diverse dal palinsesto", "evento_data_diversa"),
+    (r"sistemati da solo .* Zoom", "zoom_corretto"), (r"data leggibile scritta", "data_leggibile"),
+    (r"Zoom da correggere|correzione Zoom non riuscita|riunione .* non leggibile|nessuna riunione Zoom", "zoom_da_correggere"),
+    (r"in attesa su Zoom", "iscritti_approvati"), (r"non registrati su Zoom|non registrabile", "iscritti_registrati"),
+    (r"senza link personale|data nell'iscrizione diversa|senza ordine", "iscrizione_incompleta"), (r"iscrizioni doppie", "iscrizioni_doppie"),
+    (r"nessun relatore|relatore senza indirizzo", "relatore_mancante"), (r"link di avvio NON inviato", "link_formatore_non_inviato"),
+    (r"presenze non registrate", "presenze_mancanti"), (r"registrazione Vimeo mancante", "registrazione_mancante"),
+    (r"non ancora lavorati", "ordine_non_lavorato"), (r"NESSUN nominato", "ordine_senza_nominati"),
+    (r"non consegnate", "indirizzo_errato"), (r"pagina non raggiungibile|date del palinsesto assenti", "catalogo"),
+    (r"giri falliti|workflow non leggibile", "workflow_fallito"), (r"righe di un altro prodotto", "ordine_erp_sbagliato"),
+    (r"oltre i posti", "iscritti_oltre_posti"), (r"NON eseguiti", "zoom_non_controllato"),
+]
+
+
+def codice(testo):
+    for rx, c in CODICI:
+        if re.search(rx, testo):
+            return c
+    return "altro"
+
+
+def apprendimento():
+    """Salva il giorno nello storico e prepara il riepilogo dei problemi ricorrenti (ultimi 14 giorni; il lunedi' 30)."""
+    oggi = {"data": OGGI, "ok": sum(1 for _, e, _ in RIGHE if e == "ok"),
+            "fix": sorted({codice(t) for _, e, t in RIGHE if e == "fix"}), "ko": sorted({codice(t) for _, e, t in RIGHE if e == "ko"})}
+    try:
+        st = json.load(io.open(STORICO, encoding="utf-8"))
+    except Exception:
+        st = []
+    st = [x for x in st if x["data"] != OGGI] + [oggi]
+    st = st[-120:]
+    if not PROVA:
+        json.dump(st, io.open(STORICO, "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+    giorni = 30 if ADESSO.astimezone(ROMA).weekday() == 0 else 14
+    da = (ADESSO.astimezone(ROMA).date() - D.timedelta(days=giorni)).isoformat()
+    cont = collections.Counter(); sist = collections.Counter()
+    for x in st:
+        if x["data"] >= da:
+            for c in x["ko"]:
+                cont[c] += 1
+            for c in x["fix"]:
+                sist[c] += 1
+    giorni_audit = sum(1 for x in st if x["data"] >= da)
+    rip = [(c, n) for c, n in cont.most_common() if n >= 2 and c != "zoom_non_controllato"]
+    righe = []
+    for c, n in rip:
+        righe.append("%s: da sistemare in %d giorni su %d" % (c.replace("_", " "), n, giorni_audit) +
+                     (" - e' gia' automatizzato in parte" if c in AUTOMATIZZATI else " - CANDIDATO a una nuova regola automatica"))
+    for c, n in sist.most_common():
+        righe.append("%s: sistemato da solo %d volte" % (c.replace("_", " "), n))
+    return giorni_audit, righe
+
+
 # ------------------------------------------------------------------ mail
 def mail():
     sez = collections.OrderedDict()
@@ -368,12 +504,19 @@ def mail():
             sim, col = {"ok": ("&#10003;", "#1F7A3D"), "ko": ("&#10007;", "#C8202B"), "fix": ("&#9874;", "#b9770e")}[e]
             et = {"ok": "funziona", "ko": "DA SISTEMARE", "fix": "sistemato da solo"}[e]
             righe_html.append("<tr><td style='padding:6px 10px;width:150px;color:%s;font-weight:bold;vertical-align:top'>%s %s</td><td style='padding:6px 10px;border-bottom:1px solid #e3e8ec'>%s</td></tr>" % (col, sim, et, html.escape(t)))
+    giorni_audit, appr = apprendimento()
+    if appr:
+        righe_html.append("<tr><td colspan='2' style='background:#06484b;color:#fff;padding:6px 10px;font-weight:bold'>Cosa stiamo imparando (ultimi %s giorni di audit: %d)</td></tr>" % (
+            "30" if ADESSO.astimezone(ROMA).weekday() == 0 else "14", giorni_audit))
+        for t in appr:
+            righe_html.append("<tr><td style='padding:6px 10px;width:150px;color:#51606E;vertical-align:top'>apprendimento</td><td style='padding:6px 10px;border-bottom:1px solid #e3e8ec'>%s</td></tr>" % html.escape(t))
     corpo = ("<div style='font-family:Arial,sans-serif;font-size:14px;color:#0E2A4D;max-width:760px'>"
              "<p style='font-size:16px'><b>Audit corsi di formazione, %s</b></p>"
              "<p>%d controlli a posto &middot; %d cose sistemate da sole &middot; <b style='color:%s'>%d da sistemare</b></p>"
              "<table style='border-collapse:collapse;width:100%%'>%s</table>"
              "<p style='color:#51606E;font-size:12px'>Controlla eventi, Zoom, iscrizioni, relatori, presenze e registrazioni, ordini, consegne, catalogo e giri automatici. "
-             "Sistema da solo titolo/orario Zoom, iscritti in attesa o assenti da Zoom e date mancanti.</p></div>") % (
+             "Sistema da solo titolo/orario Zoom, iscritti in attesa o assenti da Zoom e date mancanti. Ogni giorno si aggiunge allo storico: "
+             "i problemi che tornano diventano nuove regole.</p></div>") % (
         ora, n_ok, n_fix, "#C8202B" if n_ko else "#1F7A3D", n_ko, "".join(righe_html))
     oggetto = "Audit corsi %s: %s" % (ADESSO.astimezone(ROMA).strftime("%d/%m"), "tutto a posto" if not n_ko else "%d da sistemare" % n_ko) + (" (%d sistemati)" % n_fix if n_fix else "")
     return oggetto, corpo
@@ -405,7 +548,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, consegne, catalogo, lavori):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, consegne, catalogo, lavori):
         try:
             f()
         except Exception as e:
@@ -415,6 +558,8 @@ def main():
     if PROVA:
         for s, e, t in RIGHE:
             print("  [%s] %s: %s" % (e, s, t[:200]))
+        g, appr = apprendimento()
+        print("  apprendimento (%d giorni di storico): %s" % (g, appr or "ancora niente"))
         return
     oggetto, corpo = mail()
     invia(oggetto, corpo)
