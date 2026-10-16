@@ -39,6 +39,10 @@ def _cerca(obj, filtri, props):
 
 def giro(os_, auto, prova=False):
     """os_: ordini nel giro (corsi_ordini.ordini_nuovi). Restituisce quante e-mail ha inviato (o inviarebbe)."""
+    import os
+    if os.path.exists(os.path.join(O.QUI, "pausa_registrazioni.txt")):
+        print("  registrazione illimitati: IN PAUSA (file pausa_registrazioni.txt): in attesa della pagina personale")
+        return 0
     illim = {}                                    # base corso -> numeri d'ordine con licenza illimitata
     for o in os_:
         m = O.CORSO.match(o["sku"])
