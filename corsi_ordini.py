@@ -384,8 +384,8 @@ def prepara(o, prova):
         tardi = -int((fine_ - ini_).total_seconds() // 60)      # x negativo: la nomina chiude N minuti DOPO l'inizio, cioe' alla fine
     if fine_ <= ora_:
         # 16/10/2026: ordine a corso finito = REGISTRAZIONE (stesso codice, stesso prezzo): la scuola indica chi partecipa
-        # e ogni persona riceve il link PERSONALE (registrazioni_illimitate.giro), mai il link Vimeo diretto. Nomina aperta 30 giorni.
-        tardi = -int((fine_ - ini_).total_seconds() // 60) - 30 * 1440
+        # e ogni persona riceve il link PERSONALE (registrazioni_illimitate.giro), mai il link Vimeo diretto. Nomina aperta 30 giorni dall'invio.
+        tardi = -int((ora_ - ini_).total_seconds() // 60) - 30 * 1440      # 30 giorni da OGGI (data dell'invito), non dalla diretta
     link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id, tardi)
     return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
             "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
