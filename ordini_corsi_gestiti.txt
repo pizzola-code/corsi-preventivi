@@ -255,3 +255,11 @@ ambiguo|2026EN17671 - ERP
 2026EN16833|WBRELEPERR-1|registrazione-inviata
 2026EN16823|sollecito_ordine
 2026EN16823|allerta_agente
+RECI|454067043527|dino.acerra@istitutoguarini.edu.it
+RECI|454067043527|fausto.brancato@istitutoguarini.edu.it
+RECI|454067043527|fabio.capellini@istitutoguarini.edu.it
+RECI|454067043527|maria.cecilia.salvadori@istitutoguarini.edu.it
+RECI|454067043527|tiziana.campagnuolo@istitutoguarini.edu.it
+RECI|454067043527|annunziata.vizziello@istitutoguarini.edu.it
+RECI|454067043527|elvadia.pernaci@istitutoguarini.edu.it
+RECI|454067043527|carmela.santoro@istitutoguarini.edu.it
