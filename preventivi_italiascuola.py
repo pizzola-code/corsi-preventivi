@@ -54,11 +54,75 @@ VERDE = "#00733a"
 # Il motore nasce con la landing: tutto cio' che e' arrivato prima (prove) non si lavora.
 DA_QUANDO = 1792108800000                                     # 16/10/2026 00:00 UTC
 
+# Pipeline separata dai corsi Spaggiari (16/10/2026): report, solleciti e chiusure dei corsi Spaggiari non la vedono.
+PIPELINE_IS = "4229750005"
+STADIO_RICHIESTA_IS = "6238864575"       # Richiesta ricevuta
+STADIO_INVIATO_IS = "6238864576"         # Preventivo inviato
+
 MODALITA = re.compile(r"^(Diretta live|Registrazione|Illimitato|Iscrizione)\b", re.I)
 
-NOTE = ("Per acquistare, indichi nell'ordine i codici articolo riportati in questo preventivo. "
-        "Per qualsiasi domanda può rispondere all'e-mail con cui lo ha ricevuto o scrivere a "
-        + RISPOSTE + ".")                                     # DA CONFERMARE (procedura d'acquisto)
+def carica_negozio():
+    try:
+        d = json.load(io.open(os.path.join(QUI, "shop_scuole.json"), encoding="utf-8"))
+        return d.get("home") or "https://www.scuolashop.it/scuole/", d.get("prodotti") or {}
+    except Exception:
+        return "https://www.scuolashop.it/scuole/", {}
+
+
+NEGOZIO_HOME, NEGOZIO = carica_negozio()
+
+
+def disponibilita(righe):
+    """Divide le righe del preventivo: ordinabili sullo shop (con il link alla pagina) e non ancora ordinabili."""
+    disp, man = [], []
+    for r in righe:
+        u = NEGOZIO.get(r["codice"])
+        (disp if u else man).append((r, u))
+    return disp, man
+
+
+def titolo_riga(r):
+    return r["corso"] + ((" (" + r["quando"] + ")") if r["quando"] and not r["licenza"].lower().startswith("registr") else "")
+
+
+def nota_preventivo(righe):
+    """Testo «Come ordinare» scritto sul preventivo (non si modifica piu' dopo la pubblicazione)."""
+    disp, man = disponibilita(righe)
+    h = ("<b>Come ordinare su ScuolaShop</b><br>"
+         '1. Accedi al canale Scuole di ScuolaShop: <a href="%s">www.scuolashop.it/scuole</a>. '
+         "Se la scuola non è ancora registrata, si registra dalla stessa pagina.<br>"
+         "2. Cerca i codici articolo di questo preventivo, oppure apri i collegamenti qui sotto, e aggiungili al carrello.<br>"
+         "3. Indica i partecipanti nell'ordine e scegli il bonifico differito.<br>"
+         "Dopo l'ordine arrivano via e-mail le istruzioni per accedere ai corsi.<br>" % NEGOZIO_HOME)
+    if disp:
+        h += "<br><b>Apri i corsi sullo shop</b><br>" + "<br>".join(
+            '%s: <a href="%s">%s</a>' % (r["codice"], u, titolo_riga(r)) for r, u in disp) + "<br>"
+    if man:
+        h += ("<br>Per %s l'ordine passa da noi: scrivi a %s e ti aiutiamo."
+              % (", ".join(r["codice"] for r, _ in man), RISPOSTE))
+    return h
+
+
+def blocco_ordine_email(righe):
+    """Blocco «Come ordinare» dell'e-mail: pulsante verso lo shop e collegamenti ai singoli corsi."""
+    disp, man = disponibilita(righe)
+    h = ('<div style="background:#f2f7f6;border-left:3px solid %s;padding:12px 14px"><b>Come ordinare su ScuolaShop</b>'
+         '<ol style="margin:6px 0 0;padding-left:20px">'
+         '<li>Accedi al canale Scuole di ScuolaShop (se la scuola non è ancora registrata, si registra dalla stessa pagina).</li>'
+         '<li>Cerca i codici articolo del preventivo, oppure apri i corsi dai collegamenti qui sotto, e aggiungili al carrello.</li>'
+         '<li>Indica i partecipanti nell&rsquo;ordine e scegli il bonifico differito.</li></ol>'
+         '<p style="margin:8px 0 0">Dopo l&rsquo;ordine ricevi via e-mail le istruzioni per accedere ai corsi.</p>'
+         '<p style="margin:14px 0 4px"><a href="%s" style="background:#e8b547;color:%s;text-decoration:none;font-weight:700;'
+         'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>' % (VERDE, NEGOZIO_HOME, VERDE))
+    if disp:
+        h += '<p style="margin:10px 0 0">' + "<br>".join(
+            '<a href="%s" style="color:%s">%s</a> &middot; cod. %s' % (u, VERDE, titolo_riga(r), r["codice"]) for r, u in disp) + "</p>"
+    if man:
+        h += ('<p style="margin:10px 0 0">Per %s l&rsquo;ordine passa da noi: scrivi a %s e ti aiutiamo.</p>'
+              % (", ".join(r["codice"] for r, _ in man), RISPOSTE))
+    return h + "</div>"
+
+
 CONDIZIONI = ("Offerta valida 30 giorni. I corsi sono erogati da Italiascuola.it e distribuiti da "
               "Gruppo Spaggiari Parma S.p.A. Importi in euro; il regime IVA applicabile è indicato in fattura.")  # DA CONFERMARE
 
@@ -105,16 +169,15 @@ def corpo_email(d):
 <table style="border-collapse:collapse;width:100%%;font:14px/1.5 Arial,sans-serif;margin:18px 0">%(righe)s
 <tr><td style="padding:12px;font-weight:700;color:%(p)s">Totale</td>
 <td style="padding:12px;text-align:right;font-weight:700;font-size:17px;color:%(p)s">%(tot)s</td></tr></table>
-<div style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px"><b>Come si acquista</b>
-<p style="margin:4px 0 0">Nell&rsquo;ordine indichi i codici articolo riportati nel preventivo.</p>
-<p style="margin:8px 0 0">I corsi sono erogati da Italiascuola.it e distribuiti da Spaggiari.</p></div>
+%(ordine)s
+<p style="margin:14px 0 0;color:#6d817f;font-size:13px">I corsi sono erogati da Italiascuola.it e distribuiti da Spaggiari.</p>
 <p>Per qualsiasi domanda pu&ograve; rispondere a questa e-mail o scrivere a %(ris)s.</p>
 <p>Cordiali saluti</p>
 <p style="margin:26px 0"><a href="%(link)s" style="background:#e8b547;color:%(p)s;text-decoration:none;font-weight:700;
 padding:13px 22px;border-radius:10px;display:inline-block">APRI IL PREVENTIVO</a></p>
 <p style="color:#6d817f;font-size:13px;margin-top:26px">Italiascuola.it &middot; distribuito da Spaggiari</p></div>""" % {
         "nome": d["nome"], "numero": d["numero"], "scuola": d["scuola"], "righe": righe, "tot": C.euro(d["totale"]),
-        "link": d["link"], "ris": RISPOSTE, "p": VERDE}
+        "link": d["link"], "ris": RISPOSTE, "p": VERDE, "ordine": blocco_ordine_email(d["righe"])}
 
 
 def invia_is(a, oggetto, html, allegato):
@@ -234,8 +297,8 @@ def lavora(inv, prova):
                  % (len(righe), v.get("corsi_richiesti") or "", totale, v.get("firstname", ""), v.get("lastname", ""),
                     v.get("ruolo", ""), v.get("mobilephone", ""), v.get("email", ""), v.get("message", "")))
         d = C.hs("/crm/v3/objects/deals", {"properties": {
-            "dealname": ("Italiascuola %d - %s" % (len(righe), scuola))[:200], "pipeline": C.PIPELINE,      # DA CONFERMARE: pipeline
-            "dealstage": C.STADIO_RICHIESTA, "amount": str(totale), "hubspot_owner_id": agente or "",
+            "dealname": ("Italiascuola %d - %s" % (len(righe), scuola))[:200], "pipeline": PIPELINE_IS,
+            "dealstage": STADIO_RICHIESTA_IS, "amount": str(totale), "hubspot_owner_id": agente or "",
             "description": corpo[:60000], "chiave_richiesta_corsi": chiave}}, "POST")
         if "_err" in d:
             print("  trattativa NON creata:", d["_msg"])
@@ -262,7 +325,7 @@ def lavora(inv, prova):
         "hs_title": "Corsi di formazione Italiascuola - %s" % scuola,
         "hs_expiration_date": str(scadenza), "hs_status": "DRAFT",
         "hs_language": "it", "hs_locale": "it-IT", "hs_currency": "EUR",
-        "hs_comments": NOTE, "hs_terms": CONDIZIONI,
+        "hs_comments": nota_preventivo(righe), "hs_terms": CONDIZIONI,
         "hs_sender_company_name": "Gruppo Spaggiari Parma S.p.A.",                    # DA CONFERMARE (distributore)
         "hs_sender_company_address": "Via Bernini 22/A", "hs_sender_company_city": "Parma",
         "hs_sender_company_zip": "43126", "hs_sender_company_state": "PR", "hs_sender_company_country": "Italia",
@@ -325,7 +388,7 @@ def lavora(inv, prova):
         return
     registra(chiave)
     ora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    C.hs("/crm/v3/objects/deals/%s" % trattativa, {"properties": {"dealstage": C.STADIO_INVIATO, "preventivo_inviato_il": ora}}, "PATCH")
+    C.hs("/crm/v3/objects/deals/%s" % trattativa, {"properties": {"dealstage": STADIO_INVIATO_IS, "preventivo_inviato_il": ora}}, "PATCH")
     if contatto:
         C.hs("/crm/v3/objects/contacts/%s" % contatto, {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
     print("  preventivo %s inviato a %s" % (dati["hs_quote_number"], C.mascherato(v["email"])))
@@ -353,7 +416,19 @@ def test():
     assert totale == 969.0, totale
     assert "ITACNES/10" in html and "&times; 3" in html and "969,00" in html.replace(" ", " "), html[:300]
     assert "Registrazione disponibile subito" not in html          # la data non si stampa sulle registrazioni
-    print("test ok: 4 righe, quantita', trattino nel titolo, email")
+    # ordine su ScuolaShop: due codici con pagina nel canale Scuole e uno senza
+    campione = righe_is("Palestre e impianti sportivi — Registrazione · per partecipante x2 — 180 EUR — cod. WBRITAPCB2-1R\n"
+                        "Gestione Incarichi — Firenze — Iscrizione · per partecipante — 125 EUR — venerdì 23 ottobre 2026 — cod. ITACNES/10\n"
+                        "Corso inventato — Registrazione · per partecipante — 90 EUR — cod. WBRITAZZZ9-1R")
+    disp, man = disponibilita(campione)
+    assert [r["codice"] for r, _ in disp] == ["WBRITAPCB2-1R", "ITACNES/10"] and [r["codice"] for r, _ in man] == ["WBRITAZZZ9-1R"], (disp, man)
+    nota = nota_preventivo(campione)
+    assert "www.scuolashop.it/scuole" in nota and "WBRITAPCB2-1R:" in nota and "Per WBRITAZZZ9-1R l'ordine passa da noi" in nota, nota
+    assert "bonifico differito" in nota and "istruzioni per accedere" in nota
+    mail = blocco_ordine_email(campione)
+    assert "ORDINA SU SCUOLASHOP" in mail and mail.count("<a href=") == 3 and "WBRITAZZZ9-1R" in mail, mail
+    assert all(u.startswith("https://www.scuolashop.it/scuole/") for _, u in disp)
+    print("test ok: 4 righe, quantita', trattino nel titolo, email, note e link ScuolaShop (2 ordinabili, 1 da noi)")
 
 
 if __name__ == "__main__":

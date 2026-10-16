@@ -1,0 +1,56 @@
+name: chiusura-italiascuola
+
+# Chiude le trattative della pipeline «Formazione Italiascuola» quando arriva l'ordine su ScuolaShop (o dall'ERP):
+# «Ordine confermato» se l'ordine e' concluso, «Chiusa persa» se e' annullato. Gemello di chiusura_trattative.py dei corsi Spaggiari.
+# Ogni 15 minuti; a mano si puo' lanciare anche in sola prova.
+on:
+  workflow_dispatch:
+    inputs:
+      prova:
+        description: "Solo prova: elenca cosa chiuderebbe senza toccare niente"
+        type: boolean
+        default: false
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chiusura-italiascuola
+  cancel-in-progress: false
+
+jobs:
+  chiusura:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ultimo commit (registri aggiornati)
+        run: |
+          git fetch -q origin main
+          git reset -q --hard origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test della logica
+        env:
+          HUBSPOT_TOKEN: test
+        run: python chiusura_italiascuola.py --test
+      - name: Ordini -> chiusura delle trattative
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: |
+          python chiusura_italiascuola.py ${{ inputs.prova && '--prova' || '' }}
+      - name: Salva il registro degli avvisi
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain chiusure_italiascuola.txt)" ]; then
+            git config user.name "motore-preventivi"
+            git config user.email "no_reply@spaggiari.eu"
+            git add chiusure_italiascuola.txt
+            git commit -m "registro: avvisi chiusura Italiascuola"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
+          fi
