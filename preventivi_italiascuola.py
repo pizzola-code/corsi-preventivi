@@ -107,12 +107,12 @@ def corpo_email(d):
 <td style="padding:12px;text-align:right;font-weight:700;font-size:17px;color:%(p)s">%(tot)s</td></tr></table>
 <div style="background:#f2f7f6;border-left:3px solid %(p)s;padding:12px 14px"><b>Come si acquista</b>
 <p style="margin:4px 0 0">Nell&rsquo;ordine indichi i codici articolo riportati nel preventivo.</p>
-<p style="margin:8px 0 0">I corsi sono erogati da Italiascuola.it e distribuiti da Gruppo Spaggiari Parma S.p.A.</p></div>
+<p style="margin:8px 0 0">I corsi sono erogati da Italiascuola.it e distribuiti da Spaggiari.</p></div>
 <p>Per qualsiasi domanda pu&ograve; rispondere a questa e-mail o scrivere a %(ris)s.</p>
 <p>Cordiali saluti</p>
 <p style="margin:26px 0"><a href="%(link)s" style="background:#e8b547;color:%(p)s;text-decoration:none;font-weight:700;
 padding:13px 22px;border-radius:10px;display:inline-block">APRI IL PREVENTIVO</a></p>
-<p style="color:#6d817f;font-size:13px;margin-top:26px">Italiascuola.it &middot; distribuito da Gruppo Spaggiari Parma S.p.A.</p></div>""" % {
+<p style="color:#6d817f;font-size:13px;margin-top:26px">Italiascuola.it &middot; distribuito da Spaggiari</p></div>""" % {
         "nome": d["nome"], "numero": d["numero"], "scuola": d["scuola"], "righe": righe, "tot": C.euro(d["totale"]),
         "link": d["link"], "ris": RISPOSTE, "p": VERDE}
 
