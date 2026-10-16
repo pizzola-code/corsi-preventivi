@@ -44,12 +44,12 @@ def giro(os_, auto, prova=False):
     if os.path.exists(os.path.join(O.QUI, "pausa_registrazioni.txt")):
         print("  registrazione illimitati: IN PAUSA (file pausa_registrazioni.txt)")
         return 0
-    illim = {}                                    # base corso -> numeri d'ordine con licenza illimitata
+    illim, singoli = {}, {}                       # base corso -> numeri d'ordine illimitati / da 1-3 posti (registrazione a corso finito)
     for o in os_:
         m = O.CORSO.match(o["sku"])
-        if m and m.group(2) == "I":
-            illim.setdefault(m.group(1), set()).add(o["num"])
-    if not illim:
+        if m:
+            (illim if m.group(2) == "I" else singoli).setdefault(m.group(1), set()).add(o["num"])
+    if not illim and not singoli:
         return 0
     ora = datetime.datetime.now(datetime.timezone.utc)
     eventi = _cerca(EV, [{"propertyName": "external_id", "operator": "CONTAINS_TOKEN", "value": "CF-*"},
@@ -64,13 +64,17 @@ def giro(os_, auto, prova=False):
         if p.get("annullato") == "true" or not (p.get("name") or "").startswith("Corso |"):
             continue
         m = re.match(r"^CF-([A-Z0-9]+)-\d{4}$", (p.get("external_id") or "").upper())
-        ordini = illim.get(m.group(1)) if m else None
+        ordini = ((illim.get(m.group(1)) or set()) | (singoli.get(m.group(1)) or set())) if m else None
         if not ordini:
             continue
+        fine_ev = p.get("end_datetime") or ""
         isc = _cerca(REG, [{"propertyName": "event_id", "operator": "EQ", "value": e["id"]},
                            {"propertyName": "status", "operator": "NEQ", "value": "Canceled"},
                            {"propertyName": "ordine_corso", "operator": "IN", "values": sorted(ordini)}],
-                     ["email", "first_name", "ordine_corso"])
+                     ["email", "first_name", "ordine_corso", "hs_createdate"])
+        # ordini da 1-3 posti: riceve la registrazione solo chi e' stato nominato a corso finito (ordine arrivato dopo la diretta)
+        isc = [i for i in isc if i["properties"].get("ordine_corso") in illim.get(m.group(1), set())
+               or (i["properties"].get("hs_createdate") or "") >= fine_ev]
         ini = O.ora_italiana(p["start_datetime"])
         giorno = "%s %d %s %d" % (O.GIORNI[ini.weekday()], ini.day, O.MESI[ini.month - 1], ini.year)
         visti, inviate, nuove = set(), 0, 0

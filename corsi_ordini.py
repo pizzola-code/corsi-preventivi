@@ -382,6 +382,10 @@ def prepara(o, prova):
     tardi = None
     if ini_ - datetime.timedelta(minutes=CHIUSURA_MIN) <= ora_ < fine_:
         tardi = -int((fine_ - ini_).total_seconds() // 60)      # x negativo: la nomina chiude N minuti DOPO l'inizio, cioe' alla fine
+    if fine_ <= ora_:
+        # 16/10/2026: ordine a corso finito = REGISTRAZIONE (stesso codice, stesso prezzo): la scuola indica chi partecipa
+        # e ogni persona riceve il link PERSONALE (registrazioni_illimitate.giro), mai il link Vimeo diretto. Nomina aperta 30 giorni.
+        tardi = -int((fine_ - ini_).total_seconds() // 60) - 30 * 1440
     link = PAGINA + "?o=" + codice(o["num"], azienda.get("codice_cliente") or "", pulito(azienda.get("name")), ev["id"], posti, azienda_id, tardi)
     return {"azienda": azienda, "azienda_id": azienda_id, "sku": o["sku"],
             "corso": re.sub(r"^Corso \| ", "", p.get("name") or base), "quando": quando(p["start_datetime"], p["end_datetime"]),
@@ -491,9 +495,9 @@ def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
     # Corsi in corso o imminenti: l'invito parte comunque, con nomina aperta fino alla fine (vedi prepara).
     validi, finiti = [], []
     for o, v in voci:
-        (finiti if v.get("finito") and not destinatari_forzati else validi).append((o, v))
+        (finiti if v.get("finito") and not destinatari_forzati and not v.get("registrazione") else validi).append((o, v))
     voci = validi
-    if finiti:
+    if finiti:                      # corso finito ma registrazione non ancora su Vimeo: avviso interno e si riprova al giro dopo
         invia_registrazioni(finiti, auto, prova, gia)
     # Guardia 2 (audit 7/10): stesso insieme di corsi gia' ordinato dalla stessa scuola da meno di 10 giorni (doppione dell'ERP):
     # niente seconda e-mail alla scuola; avviso interno, si decide a mano (--ordine N --a ... --invia).
