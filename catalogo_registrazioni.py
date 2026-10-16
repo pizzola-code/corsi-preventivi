@@ -46,6 +46,75 @@ def schede(j):
     return cerca(j["layoutSections"])
 
 
+def _trova_lead(o):
+    """Il testo `lead` del modulo, che contiene la barra dei filtri."""
+    if isinstance(o, dict):
+        if isinstance(o.get("lead"), str) and "spg-filtri" in o["lead"]:
+            return o
+        for v in o.values():
+            r = _trova_lead(v)
+            if r is not None:
+                return r
+    elif isinstance(o, list):
+        for v in o:
+            r = _trova_lead(v)
+            if r is not None:
+                return r
+
+
+NOMI_NUMERO = {20: "Venti", 21: "Ventuno", 22: "Ventidue", 23: "Ventitre", 24: "Ventiquattro", 25: "Venticinque", 26: "Ventisei"}
+
+
+def assicura_filtri(bozza, cards):
+    """Barra dei filtri: conteggi sempre allineati alle schede e pulsante «Registrazioni» (corsi gia' svolti, acquistabili in registrazione).
+    Il pulsante si somma ai prodotti (mostra solo le registrazioni di quel prodotto). True se ha modificato qualcosa."""
+    mod = _trova_lead(bozza["layoutSections"])
+    if mod is None:
+        return False
+    lead = mod["lead"]
+    nuovo = lead
+    fam = {}
+    n_reg = 0
+    for c in cards:
+        d = c.get("c_desc") or ""
+        m = re.search(r"spg-fam-([a-z0-9]+)", d)
+        if m:
+            fam[m.group(1)] = fam.get(m.group(1), 0) + 1
+        if ETICHETTA in d:
+            n_reg += 1
+
+    def conta(testo, selettore, n):
+        return re.sub(r"(" + selettore + r"[^>]*>[^<]*<b>)\d+(</b>)", lambda m: m.group(1) + str(n) + m.group(2), testo)
+
+    nuovo = conta(nuovo, r'class="spg-filtro spg-filtro--tutti"', len(cards))
+    for f, n in fam.items():
+        nuovo = conta(nuovo, r'data-fam="%s"' % f, n)
+    if 'data-fam="registrazioni"' in nuovo:
+        nuovo = conta(nuovo, r'data-fam="registrazioni"', n_reg)
+    elif n_reg:
+        bottone = ('<button type="button" class="spg-filtro spg-fam-registrazioni" data-fam="registrazioni" aria-pressed="false">'
+                   'Registrazioni <b>%d</b></button>' % n_reg)
+        nuovo = nuovo.replace('</div><p class="spg-filtri-esito"', bottone + '</div><p class="spg-filtri-esito"', 1)
+    nome = NOMI_NUMERO.get(len(cards))
+    if nome:
+        nuovo = re.sub(r"Venti(?:due|uno|tre|quattro|cinque|sei)? corsi online|Ventuno corsi online|Venti corsi online", nome + " corsi online", nuovo)
+    cambiato = nuovo != lead
+    mod["lead"] = nuovo
+    # script dei filtri (footerHtml): il filtro «registrazioni» si somma alla famiglia
+    f = bozza.get("footerHtml") or ""
+    if "soloReg" not in f and "var schede = [];" in f:
+        a = "schede.push({nodo: art, fam: m ? m[1] : ''});"
+        b = ("schede.push({nodo: art, fam: m ? m[1] : '', "
+             "reg: !!(dentro && dentro.textContent.indexOf('Registrazione disponibile') >= 0)});")
+        c = "var mostra = !scelte.length || scelte.indexOf(s.fam) >= 0;"
+        d = ("var fams = scelte.filter(function(x){ return x !== 'registrazioni'; }), soloReg = scelte.indexOf('registrazioni') >= 0;\n"
+             "      var mostra = (!fams.length || fams.indexOf(s.fam) >= 0) && (!soloReg || s.reg);")
+        if a in f and c in f:
+            bozza["footerHtml"] = f.replace(a, b, 1).replace(c, d, 1)
+            cambiato = True
+    return cambiato
+
+
 def main(prova):
     pal = {x["base"]: x for x in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "corsi_palinsesto.json"), encoding="utf-8"))}
     ora = datetime.datetime.now(datetime.timezone.utc)
@@ -81,12 +150,13 @@ def main(prova):
         nuovo = nuovo.replace('<span class="spg-corso-relatore-et">Quando</span>', '<span class="spg-corso-relatore-et">Registrazione</span>', 1)
         c["c_desc"] = nuovo
         cambi.append(v["codice"])
-    print("schede da portare a «%s»: %s" % (ETICHETTA, ", ".join(cambi) or "nessuna"))
+    filtri = assicura_filtri(bozza, cards)
+    print("schede da portare a «%s»: %s%s" % (ETICHETTA, ", ".join(cambi) or "nessuna", " · filtri/conteggi da aggiornare" if filtri else ""))
     if senza:
         print("corsi passati SENZA registrazione (invariati): %s" % ", ".join(senza))
-    if prova or not cambi:
+    if prova or not (cambi or filtri):
         return
-    api("/cms/v3/pages/site-pages/%s/draft" % PAGINA, "PATCH", {"layoutSections": bozza["layoutSections"]})
+    api("/cms/v3/pages/site-pages/%s/draft" % PAGINA, "PATCH", {"layoutSections": bozza["layoutSections"], "footerHtml": bozza.get("footerHtml") or ""})
     api("/cms/v3/pages/site-pages/%s/draft/push-live" % PAGINA, "POST")
     print("pagina aggiornata e pubblicata")
 
