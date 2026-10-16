@@ -625,6 +625,11 @@ def main():
     except Exception as e:
         print("  ERRORE nella chiusura trattative: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
+        import formatori_senza_iscritti
+        formatori_senza_iscritti.giro(prova)
+    except Exception as e:
+        print("  ERRORE nell'avviso ai formatori senza iscritti: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
         import registrazioni_illimitate
         registrazioni_illimitate.giro(os_, auto, prova)
     except Exception as e:
