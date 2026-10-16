@@ -1,0 +1,54 @@
+name: preventivi-italiascuola
+
+# PREDISPOSTO E SPENTO (16/10/2026). Parte solo a mano: nessun cron e nessun battito di cron-job.org.
+# Per accenderlo servono la decisione di Andrea e i punti «DA CONFERMARE» in preventivi_italiascuola.py.
+# Per accenderlo: aggiungere uno schedule qui, oppure un job su cron-job.org che chiami workflow_dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      prova:
+        description: "Solo prova: elenca le richieste senza creare nulla"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preventivi-italiascuola
+  cancel-in-progress: false
+
+jobs:
+  preventivi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ultimo commit (registri aggiornati)
+        run: |
+          git fetch -q origin main
+          git reset -q --hard origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test del parser e dei testi
+        env:
+          HUBSPOT_TOKEN: test
+        run: python preventivi_italiascuola.py --test
+      - name: Richieste Italiascuola -> preventivo e email
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: |
+          python preventivi_italiascuola.py ${{ inputs.prova && '--prova' || '' }}
+      - name: Salva il registro degli invii
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain inviati_italiascuola.txt)" ]; then
+            git config user.name "motore-preventivi"
+            git config user.email "no_reply@spaggiari.eu"
+            git add inviati_italiascuola.txt
+            git commit -m "registro: preventivi Italiascuola inviati"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
+          fi
