@@ -6,8 +6,8 @@ produzione e non va toccato. Qui si riusano i suoi strumenti (hs, lega, figli, d
 cambiano il modulo (form Italiascuola 80432743-...), il listino (SKU completo nella riga, quantita' di partecipanti,
 nessuno sconto), i testi, il mittente e il registro (inviati_italiascuola.txt).
 
-STATO: PREDISPOSTO E SPENTO. Il workflow preventivi-italiascuola.yml parte solo a mano (workflow_dispatch):
-nessun orario automatico finche' Andrea non decide di farlo partire.
+STATO: ATTIVO dal 16/10/2026 (Andrea), dopo un collaudo con una richiesta vera: workflow preventivi-italiascuola.yml,
+battito ogni minuto da cron-job.org (workflow_dispatch) e cron interno ogni 10 minuti come rete di sicurezza.
 
 Valori PROVVISORI da confermare (cercare «DA CONFERMARE»):
   - pipeline e stadi: si usa Formazione come per i corsi Spaggiari, trattativa «Italiascuola N - scuola»

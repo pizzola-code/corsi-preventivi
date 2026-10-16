@@ -1,15 +1,19 @@
 name: preventivi-italiascuola
 
-# PREDISPOSTO E SPENTO (16/10/2026). Parte solo a mano: nessun cron e nessun battito di cron-job.org.
-# Per accenderlo servono la decisione di Andrea e i punti «DA CONFERMARE» in preventivi_italiascuola.py.
-# Per accenderlo: aggiungere uno schedule qui, oppure un job su cron-job.org che chiami workflow_dispatch.
+# Motore dei preventivi per i corsi Italiascuola (landing spaggiari.eu/corsi-italiascuola), gemello di preventivi-corsi.
+# Attivo dal 16/10/2026 su decisione di Andrea, dopo il collaudo con una richiesta vera (trattativa annullata).
+# Il ritmo lo da' cron-job.org (workflow_dispatch ogni minuto); il cron interno ogni 10 minuti e' la rete di sicurezza,
+# perche' lo scheduler di GitHub consegna i giri con ritardi anche di 30-40 minuti.
+
 on:
   workflow_dispatch:
     inputs:
       prova:
         description: "Solo prova: elenca le richieste senza creare nulla"
         type: boolean
-        default: true
+        default: false
+  schedule:
+    - cron: '*/10 * * * *'
 
 permissions:
   contents: write
