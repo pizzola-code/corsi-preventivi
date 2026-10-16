@@ -98,6 +98,9 @@ def assicura_filtri(bozza, cards):
     nome = NOMI_NUMERO.get(len(cards))
     if nome:
         nuovo = re.sub(r"Venti(?:due|uno|tre|quattro|cinque|sei)? corsi online|Ventuno corsi online|Venti corsi online", nome + " corsi online", nuovo)
+    frase = " I corsi gi&agrave; svolti restano disponibili in registrazione, allo stesso prezzo: ogni partecipante riceve il proprio link personale, valido 30 giorni."
+    if n_reg and "restano disponibili in registrazione" not in nuovo:
+        nuovo = re.sub(r"(scende di prezzo\.)(</p>)", lambda m: m.group(1) + frase + m.group(2), nuovo, count=1)
     cambiato = nuovo != lead
     mod["lead"] = nuovo
     # script dei filtri (footerHtml): il filtro «registrazioni» si somma alla famiglia
