@@ -345,12 +345,51 @@ def registrazione_illimitati():
                           {"propertyName": "ordine_corso", "operator": "IN", "values": sorted(ordini)}], ["email"])
         mail = {(i["properties"].get("email") or "").strip().lower() for i in isc}
         mail = {x for x in mail if x and not NOSTRI.search(x)}
-        senza = [x for x in mail if "RECI|%s|%s" % (e["id"], x) not in gia]
+        senza = [x for x in mail if "RECP|%s|%s" % (e["id"], x) not in gia]
         if senza:
             mancano.append("%s: registrazione non inviata a %d iscritti su %d degli ordini illimitati" % (p["external_id"], len(senza), len(mail)))
         else:
             n_ok += 1
     (ko if mancano else ok)("5 Dopo la diretta", ("licenze illimitate, registrazione NON ancora inviata: " + " · ".join(mancano)) if mancano else "licenze illimitate: registrazione inviata a tutti gli iscritti (%d corsi)" % n_ok)
+
+
+def pagina_registrazione():
+    """16/10: la pagina personale delle registrazioni (www.spaggiari.eu/guarda-registrazione + funzione `registrazione-corso`).
+    Controlla che la pagina risponda, che la funzione rifiuti un codice falso con un messaggio (cioe' sia viva e firmi) e che
+    i video dei corsi con registrazione siano incorporabili solo da spaggiari.eu (altrimenti il link diretto resterebbe condivisibile)."""
+    import urllib.request, urllib.error
+    try:
+        h = urllib.request.urlopen("https://www.spaggiari.eu/guarda-registrazione?hsCacheBuster=%d" % int(D.datetime.now().timestamp()), timeout=30).read().decode("utf-8", "ignore")
+        (ok if "registrazione-corso" in h else ko)("5 Dopo la diretta", "pagina personale delle registrazioni: " + ("raggiungibile" if "registrazione-corso" in h else "risponde ma il contenuto non e' quello atteso"))
+    except Exception as e:
+        ko("5 Dopo la diretta", "pagina personale delle registrazioni NON raggiungibile (%s)" % type(e).__name__)
+        return
+    try:
+        r = urllib.request.Request("https://www.spaggiari.eu/_hcms/api/registrazione-corso", data=json.dumps({"t": "falso.falso", "d": "audit-controllo"}).encode(),
+                                   headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            urllib.request.urlopen(r, timeout=30)
+            ko("5 Dopo la diretta", "funzione registrazione-corso: ha ACCETTATO un codice falso")
+        except urllib.error.HTTPError as e:
+            (ok if e.code == 403 else ko)("5 Dopo la diretta", "funzione registrazione-corso: codice falso rifiutato (%s)" % e.code)
+    except Exception as e:
+        ko("5 Dopo la diretta", "funzione registrazione-corso non risponde (%s)" % type(e).__name__)
+    vt = os.environ.get("VIMEO_TOKEN")
+    if not vt:
+        return
+    aperti = []
+    for ev in cerca(EV, [{"propertyName": "external_id", "operator": "CONTAINS_TOKEN", "value": "CF-*"}, {"propertyName": "recording_link", "operator": "HAS_PROPERTY"}], ["name", "recording_link"]):
+        m = re.search(r"video/(\d+)", ev["properties"].get("recording_link") or "")
+        if not m or not (ev["properties"].get("name") or "").startswith("Corso |"):
+            continue
+        try:
+            rq = urllib.request.Request("https://api.vimeo.com/videos/%s?fields=privacy.embed,privacy.view" % m.group(1), headers={"Authorization": "bearer " + vt})
+            pr = json.loads(urllib.request.urlopen(rq, timeout=30).read().decode())["privacy"]
+            if pr.get("embed") == "public" or pr.get("view") not in ("disable", "nobody"):
+                aperti.append(m.group(1))
+        except Exception:
+            pass
+    (ko if aperti else ok)("5 Dopo la diretta", ("video dei corsi ancora incorporabili ovunque: %d (%s)" % (len(aperti), ", ".join(aperti[:5]))) if aperti else "video dei corsi: incorporabili solo da spaggiari.eu")
 
 
 def consegne():
@@ -590,7 +629,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, consegne, catalogo, lavori):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, consegne, catalogo, lavori):
         try:
             f()
         except Exception as e:

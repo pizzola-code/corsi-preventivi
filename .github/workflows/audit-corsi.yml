@@ -46,6 +46,7 @@ jobs:
           SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
           CHIAVE_NOMINE_CORSI: ${{ secrets.CHIAVE_NOMINE_CORSI }}
           ZOOM_S2S_JSON: ${{ secrets.ZOOM_S2S_JSON }}
+          VIMEO_TOKEN: ${{ secrets.VIMEO_TOKEN }}
           CORSI_AUDIT_A: ${{ vars.CORSI_AUDIT_A }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python audit_corsi_mattina.py ${{ (github.event_name == 'workflow_dispatch' && inputs.forza) && '--forza' || '' }} ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
