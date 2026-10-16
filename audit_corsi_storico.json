@@ -1,0 +1,13 @@
+[
+{
+"data": "2026-10-16",
+"ok": 13,
+"fix": [],
+"ko": [
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"ordine_erp_sbagliato",
+"zoom_non_controllato"
+]
+}
+]
