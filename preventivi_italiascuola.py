@@ -88,12 +88,15 @@ def titolo_riga(r):
 def nota_preventivo(righe):
     """Testo «Come ordinare» scritto sul preventivo (non si modifica piu' dopo la pubblicazione)."""
     disp, man = disponibilita(righe)
+    ill = any("illimit" in r["licenza"].lower() for r in righe)
     h = ("<b>Come ordinare su ScuolaShop</b><br>"
          '1. Accedi al canale Scuole di ScuolaShop: <a href="%s">www.scuolashop.it/scuole</a>. '
          "Se la scuola non è ancora registrata, si registra dalla stessa pagina.<br>"
          "2. Cerca i codici articolo di questo preventivo, oppure apri i collegamenti qui sotto, e aggiungili al carrello.<br>"
          "3. Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.<br>"
          "Dopo l'ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi; con la diretta il link vale anche per la registrazione.<br>" % NEGOZIO_HOME)
+    if ill:
+        h += "La registrazione illimitata vale per tutta la scuola e si ordina senza elenco dei partecipanti.<br>"
     if disp:
         h += "<br><b>Apri i corsi sullo shop</b><br>" + "<br>".join(
             '%s: <a href="%s">%s</a>' % (r["codice"], u, titolo_riga(r)) for r, u in disp) + "<br>"
@@ -106,15 +109,18 @@ def nota_preventivo(righe):
 def blocco_ordine_email(righe):
     """Blocco «Come ordinare» dell'e-mail: pulsante verso lo shop e collegamenti ai singoli corsi."""
     disp, man = disponibilita(righe)
+    ill = any("illimit" in r["licenza"].lower() for r in righe)
     h = ('<div style="background:#f2f7f6;border-left:3px solid %s;padding:12px 14px"><b>Come ordinare su ScuolaShop</b>'
          '<ol style="margin:6px 0 0;padding-left:20px">'
          '<li>Accedi al canale Scuole di ScuolaShop (se la scuola non è ancora registrata, si registra dalla stessa pagina).</li>'
          '<li>Cerca i codici articolo del preventivo, oppure apri i corsi dai collegamenti qui sotto, e aggiungili al carrello.</li>'
          '<li>Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.</li></ol>'
          '<p style="margin:8px 0 0">Dopo l&rsquo;ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi. '
-         'Con la diretta il link vale anche per la registrazione.</p>'
+         'Con la diretta il link vale anche per la registrazione.%s</p>'
          '<p style="margin:14px 0 4px"><a href="%s" style="background:#e8b547;color:%s;text-decoration:none;font-weight:700;'
-         'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>' % (VERDE, NEGOZIO_HOME, VERDE))
+         'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>'
+         % (VERDE, " La registrazione illimitata vale per tutta la scuola e si ordina senza elenco dei partecipanti." if ill else "",
+            NEGOZIO_HOME, VERDE))
     if disp:
         h += '<p style="margin:10px 0 0">' + "<br>".join(
             '<a href="%s" style="color:%s">%s</a> &middot; cod. %s' % (u, VERDE, titolo_riga(r), r["codice"]) for r, u in disp) + "</p>"
@@ -429,7 +435,12 @@ def test():
     mail = blocco_ordine_email(campione)
     assert "ORDINA SU SCUOLASHOP" in mail and mail.count("<a href=") == 3 and "WBRITAZZZ9-1R" in mail, mail
     assert all(u.startswith("https://www.scuolashop.it/scuole/") for _, u in disp)
-    print("test ok: 4 righe, quantita', trattino nel titolo, email, note e link ScuolaShop (2 ordinabili, 1 da noi)")
+    ill = righe_is("Gestione permessi — Registrazione illimitata · tutta la scuola — 394 EUR — cod. WBRITAPCB2-I")
+    assert ill[0]["qta"] == 1 and ill[0]["totale"] == 394.0 and ill[0]["licenza"].startswith("Registrazione illimitata"), ill
+    assert "senza elenco dei partecipanti" in nota_preventivo(ill) and "senza elenco dei partecipanti" in blocco_ordine_email(ill)
+    assert "senza elenco dei partecipanti" not in nota_preventivo(campione) and "senza elenco dei partecipanti" not in blocco_ordine_email(campione)
+    assert "ORDINA SU SCUOLASHOP" in blocco_ordine_email(ill) and 'href="https://www.scuolashop.it/scuole/' in blocco_ordine_email(ill)
+    print("test ok: 4 righe, quantita', trattino nel titolo, email, note e link ScuolaShop, registrazione illimitata")
 
 
 if __name__ == "__main__":
