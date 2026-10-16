@@ -5,7 +5,7 @@ Per ogni corso in diretta (evento «Corso | ...», codice CF-<corso>-<ggmm>) con
 un'ora dopo la fine, o appena la registrazione Vimeo e' scritta nell'evento (`recording_link`, lo fa vimeo_link_eventi.js ogni ora),
 OGNI iscritto non annullato di quegli ordini riceve da HubSpot l'e-mail «Registrazione disponibile» con il link.
 Una sola volta per persona e per evento (registro `RECI|<evento>|<indirizzo>` in ordini_corsi_gestiti.txt).
-Vale per i corsi finiti dal 15/10/2026 in poi e per tutti i futuri; i corsi con licenza da 1 o 3 posti non rientrano
+Vale per tutti i corsi del nuovo catalogo (dal 5/10/2026) e per tutti i futuri; i corsi con licenza da 1 o 3 posti non rientrano
 (per quelli resta la regola dell'ordine arrivato a corso finito).
 
 Gira dentro corsi_ordini.py (ogni 5 minuti). Uso a mano:
@@ -21,7 +21,7 @@ import preventivi_corsi as C
 
 EV, REG = O.EV, O.REG
 NOSTRI = re.compile(r"@(spaggiari\.eu|spaggiarinet\.eu|gruppospaggiari\.it)$", re.I)
-DAL = datetime.datetime(2026, 10, 15, 0, 0, tzinfo=datetime.timezone.utc)      # corsi finiti da questo giorno in poi
+DAL = datetime.datetime(2026, 10, 1, 0, 0, tzinfo=datetime.timezone.utc)       # tutti i corsi del nuovo catalogo (il primo e il 5/10): esteso il 16/10
 ATTESA = datetime.timedelta(minutes=60)
 
 
