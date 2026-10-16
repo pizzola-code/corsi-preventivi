@@ -189,7 +189,10 @@ def lavora(inv, prova):
     v = {c["name"]: c["value"] for c in inv["values"]}
     quando = datetime.datetime.fromtimestamp(inv["submittedAt"] / 1000)
     chiave = "IS|%s|%s" % (v.get("email", ""), inv["submittedAt"])
-    scuola = (v.get("scuola") or "Scuola").strip()
+    # persone fisiche (Carta del Docente, PayPal...): senza scuola il preventivo e' intestato alla persona
+    nome_persona = " ".join(x for x in (v.get("firstname"), v.get("lastname")) if x).strip()
+    scuola = (v.get("scuola") or nome_persona or "Persona fisica").strip()
+    v["scuola"] = scuola
     righe = righe_is(v.get("corsi_richiesti"))
     if not righe or not v.get("email"):
         print("  salto (richiesta senza righe o senza email)")
