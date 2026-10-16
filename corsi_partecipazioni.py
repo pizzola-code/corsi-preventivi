@@ -71,8 +71,10 @@ def iscrizioni(ev_id):
         r = C.hs("/crm/v3/objects/%s/search" % REG, {"filterGroups": [{"filters": [
             {"propertyName": "event_id", "operator": "EQ", "value": ev_id},
             {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}]}],
-            "properties": ["email", "status"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
-        out += [(x["id"], (x["properties"].get("email") or "").strip().lower(), x["properties"].get("status")) for x in r.get("results", [])]
+            "properties": ["email", "status", "solo_registrazione"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
+        # 16/10/2026: chi guarda la registrazione (nominato a corso finito) non e' un assente della diretta
+        out += [(x["id"], (x["properties"].get("email") or "").strip().lower(), x["properties"].get("status")) for x in r.get("results", [])
+                if not x["properties"].get("solo_registrazione")]
         dopo = (r.get("paging") or {}).get("next", {}).get("after")
         if not dopo:
             break

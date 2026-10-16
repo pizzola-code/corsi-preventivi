@@ -152,8 +152,60 @@ def sollecito_anticipato(ordini, gia, auto, prova):
         allerta_agente(deal, voci[0]["azienda_id"], O.pulito(voci[0]["azienda"].get("name")), voci, "%s|allerta_agente" % num)
 
 
+def sollecito_registrazioni(ordini, gia, auto, prova):
+    """Ordini di REGISTRAZIONE (corso gia' svolto, 1 o 3 posti) con la e-mail di nomina partita ma nessuna persona indicata:
+    dopo 3 giorni un promemoria alla scuola (stesso modello della nomina alla registrazione), dopo 7 giorni un avviso al team.
+    Una volta sola per passo (registro `ordine|codice|sollecito_reg` e `|allarme_reg`). 16/10/2026."""
+    for o in ordini:
+        m = O.CORSO.match(o["sku"])
+        if not m or m.group(2) == "I" or "%s|%s|inviato" % (o["num"], o["sku"]) not in gia:
+            continue
+        ev, _ = O.evento_per(m.group(1), crea=False, prova=True)
+        if not ev:
+            continue
+        p = C.hs("/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,recording_link,annullato" % (EV, ev["id"]))["properties"]
+        if p.get("annullato") == "true" or not p.get("recording_link") or _ore_a(p.get("end_datetime") or p["start_datetime"]) > 0:
+            continue                                   # solo corsi svolti con la registrazione su Vimeo
+        k1, k2 = "%s|%s|sollecito_reg" % (o["num"], o["sku"]), "%s|%s|allarme_reg" % (o["num"], o["sku"])
+        if k1 in gia and k2 in gia:
+            continue
+        if nominati(ev["id"], o["num"]) > 0:
+            continue
+        creato = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
+        eta = _ore_da(creato) if creato else 0
+        if not creato or creato < (p.get("end_datetime") or p["start_datetime"]):
+            continue                                   # ordine fatto PRIMA della diretta: non e' una registrazione acquistata, lo segue l'audit
+        v, _ = O.prepara(o, True)
+        if not v or v.get("mancante"):
+            continue
+        nome = O.pulito(v["azienda"].get("name"))
+        if eta >= 7 * 24 and k2 not in gia:
+            print("  [solleciti] registrazione %s %s: nessuna persona indicata dopo 7 giorni" % (o["num"], o["sku"]))
+            if not prova:
+                O.avviso_interno("Registrazione acquistata, nessuna persona indicata: %s" % o["num"], [
+                    "<b>%s</b> ha acquistato la registrazione di <b>%s</b> (ordine %s) ma dopo 7 giorni non ha indicato nessuno." % (nome, v["corso"], o["num"]),
+                    "Vale la pena una telefonata: la scuola ha pagato e non ha ancora ricevuto nessun link."])
+                O.segna(k2)
+        if eta >= 3 * 24 and k1 not in gia:
+            dest, motivo = O.destinatari(v["azienda_id"])
+            print("  [solleciti] registrazione %s %s: promemoria alla scuola%s" % (o["num"], o["sku"], "" if dest else " (destinatari da decidere)"))
+            if prova or not auto or not dest:
+                continue
+            agente = O.email_agente(o["deal"])
+            cc = O.CC_FISSI + ([agente] if agente and agente not in O.CC_FISSI else [])
+            dati = O.dati_email([v])
+            dati["oggetto"] = "Promemoria: indicate chi guarda la registrazione del corso «%s»" % v["corso"]
+            C.hs("/marketing/v3/transactional/single-email/send", {"emailId": O.EMAIL_NOMINA_REG, "message": {"to": dest[0][0],
+                 "cc": [x for x in ([e for e, _ in dest[1:]] + cc) if x], "bcc": O.BCC}, "customProperties": dati}, "POST")
+            O.segna(k1)
+
+
 def solleciti(ordini, auto, prova):
     sollecito_anticipato(ordini, O.registro(), auto, prova)
+    try:
+        sollecito_registrazioni(ordini, O.registro(), auto, prova)
+    except Exception as e:
+        print("  ERRORE nel promemoria delle registrazioni: %s %s" % (type(e).__name__, str(e)[:160]))
     gia = O.registro()
     ora_ordine = {}
     senza = []                                  # per l'avviso interno
