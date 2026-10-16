@@ -253,3 +253,5 @@ ambiguo|2026EN17671 - ERP
 2026EN17669|WBRELEVV-I|allarme1
 2026EN17670|WBRELEVV-1|allarme1
 2026EN16833|WBRELEPERR-1|registrazione-inviata
+2026EN16823|sollecito_ordine
+2026EN16823|allerta_agente
