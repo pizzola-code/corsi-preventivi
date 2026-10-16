@@ -227,6 +227,8 @@ def corsi_gia_iniziati(righe):
         inizi[x["codice"].upper()] = datetime.datetime(a, m, g, h - (2 if legale else 1), mi, tzinfo=datetime.timezone.utc)
     fuori = []
     for r in righe:
+        if "registrazione" in (r.get("quando") or "").lower():
+            continue          # 16/10/2026: corso svolto con registrazione su Vimeo, acquistabile (stesso codice e prezzo)
         cod = re.sub(r"-(1|3|I)$", "", (r.get("codice") or "").upper().split()[0]) if r.get("codice") else ""   # «WBRELEBILC-3» -> «WBRELEBILC»
         ini = inizi.get(cod)
         if ini and ini - datetime.timedelta(minutes=CHIUSURA_NOMINE_MIN) <= adesso:
