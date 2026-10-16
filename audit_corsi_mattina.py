@@ -259,7 +259,7 @@ def eventi_e_zoom():
     if recenti:
         (ko if mancano else ok)("4 Relatori", ("link di avvio NON inviato a: " + ", ".join(mancano)) if mancano else "link di avvio inviato ai %d corsi partiti nelle ultime 24 ore" % len(recenti))
     # dopo la diretta
-    passati = [e for e in tutti if D.timedelta(hours=24) <= ADESSO - dt(e["properties"]["end_datetime"]) <= D.timedelta(days=4)]
+    passati = [e for e in tutti if D.timedelta(hours=6) <= ADESSO - dt(e["properties"]["end_datetime"]) <= D.timedelta(days=4)]    # 6 ore: la registrazione arriva entro poche ore
     sp_pres, sp_rec = [], []
     for e in passati:
         p = e["properties"]
@@ -315,6 +315,42 @@ def ordini():
                 if n == 0:
                     senza_nomi.append("%s (%s, %s)" % (num, m.group(1), v["data"][5:]))
     (ko if senza_nomi else ok)("6 Ordini", ("corsi (svolti da meno di 2 giorni o entro 3 giorni) con ordine e NESSUN nominato, da seguire con l'agente: " + ", ".join(senza_nomi[:12])) if senza_nomi else "nessun ordine con corso recente o imminente e zero nominati")
+
+
+def registrazione_illimitati():
+    """16/10: gli iscritti degli ordini ILLIMITATI ricevono la registrazione un'ora dopo la fine (o quando c'e' su Vimeo)."""
+    import registrazioni_illimitate as R
+    os_ = ordini_erp()
+    gia = O.registro()
+    illim = {}
+    for o in os_:
+        m = O.CORSO.match(o["sku"])
+        if m and m.group(2) == "I":
+            illim.setdefault(m.group(1), set()).add(o["num"])
+    mancano = []
+    eventi = cerca(EV, [{"propertyName": "external_id", "operator": "CONTAINS_TOKEN", "value": "CF-*"},
+                        {"propertyName": "end_datetime", "operator": "GTE", "value": R.DAL.strftime("%Y-%m-%dT%H:%M:%SZ")},
+                        {"propertyName": "end_datetime", "operator": "LTE", "value": (ADESSO - D.timedelta(hours=4)).strftime("%Y-%m-%dT%H:%M:%SZ")}],
+                    ["name", "external_id", "recording_link", "annullato"])
+    n_ok = 0
+    for e in eventi:
+        p = e["properties"]
+        m = re.match(r"^CF-([A-Z0-9]+)-\d{4}$", (p.get("external_id") or "").upper())
+        ordini = illim.get(m.group(1)) if m else None
+        if not ordini or p.get("annullato") == "true" or not (p.get("name") or "").startswith("Corso |"):
+            continue
+        if not p.get("recording_link"):
+            mancano.append("%s: registrazione Vimeo non ancora collegata all'evento" % p["external_id"]); continue
+        isc = cerca(REG, [{"propertyName": "event_id", "operator": "EQ", "value": e["id"]}, {"propertyName": "status", "operator": "NEQ", "value": "Canceled"},
+                          {"propertyName": "ordine_corso", "operator": "IN", "values": sorted(ordini)}], ["email"])
+        mail = {(i["properties"].get("email") or "").strip().lower() for i in isc}
+        mail = {x for x in mail if x and not NOSTRI.search(x)}
+        senza = [x for x in mail if "RECI|%s|%s" % (e["id"], x) not in gia]
+        if senza:
+            mancano.append("%s: registrazione non inviata a %d iscritti su %d degli ordini illimitati" % (p["external_id"], len(senza), len(mail)))
+        else:
+            n_ok += 1
+    (ko if mancano else ok)("5 Dopo la diretta", ("licenze illimitate, registrazione NON ancora inviata: " + " · ".join(mancano)) if mancano else "licenze illimitate: registrazione inviata a tutti gli iscritti (%d corsi)" % n_ok)
 
 
 def consegne():
@@ -450,7 +486,7 @@ CODICI = [  # (parte del testo, codice)
     (r"presenze non registrate", "presenze_mancanti"), (r"registrazione Vimeo mancante", "registrazione_mancante"),
     (r"non ancora lavorati", "ordine_non_lavorato"), (r"NESSUN nominato", "ordine_senza_nominati"),
     (r"non consegnate", "indirizzo_errato"), (r"pagina non raggiungibile|date del palinsesto assenti", "catalogo"),
-    (r"giri falliti|workflow non leggibile", "workflow_fallito"), (r"righe di un altro prodotto", "ordine_erp_sbagliato"),
+    (r"giri falliti|workflow non leggibile", "workflow_fallito"), (r"licenze illimitate, registrazione NON|Vimeo non ancora collegata", "registrazione_illimitati"), (r"righe di un altro prodotto", "ordine_erp_sbagliato"),
     (r"oltre i posti", "iscritti_oltre_posti"), (r"NON eseguiti", "zoom_non_controllato"),
 ]
 
@@ -554,7 +590,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, ordini_sospetti, consegne, catalogo, lavori):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, consegne, catalogo, lavori):
         try:
             f()
         except Exception as e:

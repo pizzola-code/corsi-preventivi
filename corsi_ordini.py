@@ -621,6 +621,11 @@ def main():
     except Exception as e:
         print("  ERRORE nella chiusura trattative: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
+        import registrazioni_illimitate
+        registrazioni_illimitate.giro(os_, auto, prova)
+    except Exception as e:
+        print("  ERRORE nelle registrazioni agli illimitati: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
         import solleciti_corsi
         solleciti_corsi.solleciti(os_, auto, prova)
     except Exception as e:
