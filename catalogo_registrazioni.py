@@ -115,6 +115,51 @@ def assicura_filtri(bozza, cards):
     return cambiato
 
 
+def sposta_pulsante(bozza):
+    """Il pulsante «Registrazioni» sta accanto ai pulsanti della data (Ordina per data), in colore diverso dai filtri per prodotto.
+    Il filtro continua a funzionare perche' i gestori leggono i pulsanti in tutta la pagina. True se ha modificato qualcosa."""
+    f = bozza.get("footerHtml") or ""
+    if "spg-reg-sposta" in f or "var schede = [];" not in f:
+        return False
+    sost = [
+        ("barra.querySelectorAll('.spg-filtro')", "document.querySelectorAll('.spg-filtri .spg-filtro, .spg-ordina .spg-filtro')"),
+        ("barra.addEventListener('click', function(ev){", "document.addEventListener('click', function(ev){"),
+        ("barra.parentNode.insertBefore(gruppo, barra.nextSibling);",
+         "barra.parentNode.insertBefore(gruppo, barra.nextSibling);\n"
+         "  var regBtn = barra.querySelector('.spg-fam-registrazioni');   // spg-reg-sposta\n"
+         "  if (regBtn) { regBtn.classList.add('spg-reg'); gruppo.appendChild(regBtn); }"),
+        (".spg-ord:focus-visible{outline:3px solid #e8b547;outline-offset:2px}",
+         ".spg-ord:focus-visible{outline:3px solid #e8b547;outline-offset:2px}\n"
+         ".spg-ordina .spg-filtro.spg-reg{margin-left:10px;background:#6fc2e7!important;border-color:#6fc2e7!important;color:#06484b!important}\n"
+         ".spg-ordina .spg-filtro.spg-reg:hover{background:#8fd0ee!important;border-color:#8fd0ee!important}\n"
+         '.spg-ordina .spg-filtro.spg-reg[aria-pressed="true"]{background:#06484b!important;border-color:#06484b!important;color:#fff!important}'),
+    ]
+    nuovo = f
+    for a, b in sost:
+        if a not in nuovo:
+            return False                    # struttura cambiata: meglio non toccare niente
+        nuovo = nuovo.replace(a, b)        # il primo gruppo di righe compare due volte (filtri e azzeramento): tutte
+    bozza["footerHtml"] = nuovo
+    return True
+
+
+def compatta_filtri(bozza):
+    """Filtri per prodotto e pulsanti della data su meno righe: la colonna del testo introduttivo resta stretta, ma la barra dei filtri
+    puo' usare tutta la larghezza (spg-filtri-larghi). True se ha modificato qualcosa."""
+    f = bozza.get("footerHtml") or ""
+    ancora = ".spg-ord:focus-visible{outline:3px solid #e8b547;outline-offset:2px}"
+    if "spg-filtri-larghi" in f or ancora not in f:
+        return False
+    righe = [ancora, "/* spg-filtri-larghi */",
+             "#hs_cos_wrapper_module_ss_intro .dcards__head,#hs_cos_wrapper_module_ss_intro .dcards__lead{max-width:none!important}",
+             "#hs_cos_wrapper_module_ss_intro .dcards__lead>p{max-width:620px}",
+             "#hs_cos_wrapper_module_ss_intro .spg-filtri{gap:6px!important}",
+             "#hs_cos_wrapper_module_ss_intro .spg-filtri .spg-filtro{padding:8px 10px!important;font-size:13px!important}",
+             "#hs_cos_wrapper_module_ss_intro .spg-ordina .spg-ord{padding:8px 13px}"]
+    bozza["footerHtml"] = f.replace(ancora, chr(10).join(righe), 1)
+    return True
+
+
 def main(prova):
     pal = {x["base"]: x for x in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "corsi_palinsesto.json"), encoding="utf-8"))}
     ora = datetime.datetime.now(datetime.timezone.utc)
@@ -151,6 +196,8 @@ def main(prova):
         c["c_desc"] = nuovo
         cambi.append(v["codice"])
     filtri = assicura_filtri(bozza, cards)
+    filtri = sposta_pulsante(bozza) or filtri
+    filtri = compatta_filtri(bozza) or filtri
     print("schede da portare a «%s»: %s%s" % (ETICHETTA, ", ".join(cambi) or "nessuna", " · filtri/conteggi da aggiornare" if filtri else ""))
     if senza:
         print("corsi passati SENZA registrazione (invariati): %s" % ", ".join(senza))
