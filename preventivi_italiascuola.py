@@ -92,8 +92,8 @@ def nota_preventivo(righe):
          '1. Accedi al canale Scuole di ScuolaShop: <a href="%s">www.scuolashop.it/scuole</a>. '
          "Se la scuola non è ancora registrata, si registra dalla stessa pagina.<br>"
          "2. Cerca i codici articolo di questo preventivo, oppure apri i collegamenti qui sotto, e aggiungili al carrello.<br>"
-         "3. Indica i partecipanti nell'ordine e scegli il bonifico differito.<br>"
-         "Dopo l'ordine arrivano via e-mail le istruzioni per accedere ai corsi.<br>" % NEGOZIO_HOME)
+         "3. Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.<br>"
+         "Dopo l'ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi; con la diretta il link vale anche per la registrazione.<br>" % NEGOZIO_HOME)
     if disp:
         h += "<br><b>Apri i corsi sullo shop</b><br>" + "<br>".join(
             '%s: <a href="%s">%s</a>' % (r["codice"], u, titolo_riga(r)) for r, u in disp) + "<br>"
@@ -110,8 +110,9 @@ def blocco_ordine_email(righe):
          '<ol style="margin:6px 0 0;padding-left:20px">'
          '<li>Accedi al canale Scuole di ScuolaShop (se la scuola non è ancora registrata, si registra dalla stessa pagina).</li>'
          '<li>Cerca i codici articolo del preventivo, oppure apri i corsi dai collegamenti qui sotto, e aggiungili al carrello.</li>'
-         '<li>Indica i partecipanti nell&rsquo;ordine e scegli il bonifico differito.</li></ol>'
-         '<p style="margin:8px 0 0">Dopo l&rsquo;ordine ricevi via e-mail le istruzioni per accedere ai corsi.</p>'
+         '<li>Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.</li></ol>'
+         '<p style="margin:8px 0 0">Dopo l&rsquo;ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi. '
+         'Con la diretta il link vale anche per la registrazione.</p>'
          '<p style="margin:14px 0 4px"><a href="%s" style="background:#e8b547;color:%s;text-decoration:none;font-weight:700;'
          'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>' % (VERDE, NEGOZIO_HOME, VERDE))
     if disp:
@@ -424,7 +425,7 @@ def test():
     assert [r["codice"] for r, _ in disp] == ["WBRITAPCB2-1R", "ITACNES/10"] and [r["codice"] for r, _ in man] == ["WBRITAZZZ9-1R"], (disp, man)
     nota = nota_preventivo(campione)
     assert "www.scuolashop.it/scuole" in nota and "WBRITAPCB2-1R:" in nota and "Per WBRITAZZZ9-1R l'ordine passa da noi" in nota, nota
-    assert "bonifico differito" in nota and "istruzioni per accedere" in nota
+    assert "bonifico differito" in nota and "e-mail professionale diretta" in nota and "anche per la registrazione" in nota
     mail = blocco_ordine_email(campione)
     assert "ORDINA SU SCUOLASHOP" in mail and mail.count("<a href=") == 3 and "WBRITAZZZ9-1R" in mail, mail
     assert all(u.startswith("https://www.scuolashop.it/scuole/") for _, u in disp)
