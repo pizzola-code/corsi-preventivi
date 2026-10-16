@@ -46,6 +46,7 @@ EMAIL_ID = 483372784867                  # «CORSI - Nomina partecipanti (invio 
 EMAIL_PER_N = {1: 483372784867, 2: 485623493847, 3: 485623493841, 4: 485683370198,
                5: 485683370193, 6: 485683370187, 7: 485623493828, 8: 485615264984}
 PAGINA = "https://www.spaggiari.eu/indica-partecipanti-corso"
+EMAIL_NOMINA_REG = 492915707081           # «CORSI - Nomina partecipanti REGISTRAZIONE (invio da API)»: corso finito, la scuola indica chi guarda la registrazione
 EMAIL_REG = 484833839350               # «EVENTI - Registrazione disponibile (invio da API)»: per gli ordini arrivati a corso finito
 CORSO = re.compile(r"^WBRELE?([A-Z0-9]+)-(1|3|I)$")
 CC_FISSI = []                              # in copia visibile solo l'agente di zona
@@ -428,6 +429,39 @@ def possibile_duplicato(num, azienda_id, skus, gia):
     return None
 
 
+def invia_nomina_registrazione(registrati, auto, prova, gia):
+    """Ordine a corso FINITO con registrazione su Vimeo (16/10/2026): una e-mail per corso, con il modello dedicato alle registrazioni
+    (niente «diretta»/Zoom), alla scuola che indica chi guarda; ogni nominato riceve poi il link personale (registrazioni_illimitate.giro)."""
+    for o, v in registrati:
+        k_inv = "%s|%s|inviato" % (o["num"], o["sku"])
+        if k_inv in gia:
+            continue
+        dest, motivo = destinatari(v["azienda_id"])
+        agente = email_agente(o["deal"])
+        cc = CC_FISSI + ([agente] if agente and agente not in CC_FISSI else [])
+        if not dest:
+            k = "%s|avvisato-destinatari" % o["num"]
+            print("     destinatari: DA DECIDERE (%s)" % motivo)
+            if k not in gia and not prova:
+                avviso_interno("Ordine di registrazione: da scegliere a chi mandare il link di nomina (%s)" % o["num"], [
+                    "L'ordine <b>%s</b> di %s riguarda la registrazione di <b>%s</b>." % (o["num"], pulito(v["azienda"].get("name")), v["corso"]),
+                    "Non riesco a scegliere i destinatari da solo: %s." % motivo,
+                    "Per inviare: <code>python corsi_ordini.py --ordine %s --a mail1,mail2 --invia</code>." % o["num"]])
+                segna(k)
+            continue
+        print("     %s: corso finito, nomina per la registrazione a %d destinatari (%s)" % (o["sku"], len(dest), motivo))
+        if prova or not auto:
+            continue
+        dati = dati_email([v])
+        dati["oggetto"] = "Registrazione del corso «%s»: indica chi la guarderà" % v["corso"]
+        corpo = {"emailId": EMAIL_NOMINA_REG, "message": {"to": dest[0][0], "cc": [x for x in ([e for e, _ in dest[1:]] + cc) if x], "bcc": BCC},
+                 "customProperties": dati}
+        r = C.hs("/marketing/v3/transactional/single-email/send", corpo, "POST")
+        print("     nomina registrazione inviata da HubSpot:", r.get("status"), (r.get("statusId") or "")[:20])
+        if "_err" not in r:
+            segna(k_inv)
+
+
 def invia_registrazioni(finiti, auto, prova, gia):
     """Corso gia' svolto: la scuola riceve la registrazione (link del player Vimeo scritto negli eventi da vimeo_link_eventi.js).
     Se la registrazione non c'e' ancora non si segna niente: il giro dopo riprova. Un avviso interno, una volta sola."""
@@ -493,10 +527,15 @@ def lavora_ordine(righe, auto, prova, destinatari_forzati=None):
             segna(k)
     # Corsi gia' finiti (ordine arrivato dopo la diretta): alla scuola si manda la REGISTRAZIONE, senza fermarsi (14/10/2026).
     # Corsi in corso o imminenti: l'invito parte comunque, con nomina aperta fino alla fine (vedi prepara).
-    validi, finiti = [], []
+    validi, finiti, registrati = [], [], []
     for o, v in voci:
-        (finiti if v.get("finito") and not destinatari_forzati and not v.get("registrazione") else validi).append((o, v))
+        if v.get("finito") and not destinatari_forzati:
+            (registrati if v.get("registrazione") else finiti).append((o, v))
+        else:
+            validi.append((o, v))
     voci = validi
+    if registrati:
+        invia_nomina_registrazione(registrati, auto, prova, gia)
     if finiti:                      # corso finito ma registrazione non ancora su Vimeo: avviso interno e si riprova al giro dopo
         invia_registrazioni(finiti, auto, prova, gia)
     # Guardia 2 (audit 7/10): stesso insieme di corsi gia' ordinato dalla stessa scuola da meno di 10 giorni (doppione dell'ERP):
