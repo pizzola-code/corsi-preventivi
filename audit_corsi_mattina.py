@@ -392,6 +392,29 @@ def pagina_registrazione():
     (ko if aperti else ok)("5 Dopo la diretta", ("video dei corsi ancora incorporabili ovunque: %d (%s)" % (len(aperti), ", ".join(aperti[:5]))) if aperti else "video dei corsi: incorporabili solo da spaggiari.eu")
 
 
+def nominati_registrazione():
+    """16/10: chi e' stato nominato a corso finito (solo_registrazione) deve avere il link personale entro un'ora da quando
+    la registrazione e' su Vimeo (chiave RECP nel registro). Segnala anche le nomine fuori posto (collegate a un evento)."""
+    gia = O.registro()
+    reg = cerca(REG, [{"propertyName": "solo_registrazione", "operator": "EQ", "value": "si"}, {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}],
+                ["email", "event_id", "ordine_corso", "hs_createdate"])
+    reg = [x for x in reg if not (x["properties"].get("ordine_corso") or "").startswith("PROVA")]
+    senza, n_ok = [], 0
+    for x in reg:
+        p = x["properties"]; em = (p.get("email") or "").strip().lower()
+        if not em or NOSTRI.search(em):
+            continue
+        if "RECP|%s|%s" % (p.get("event_id"), em) in gia:
+            n_ok += 1
+            continue
+        ev = hs("/crm/v3/objects/%s/%s?properties=external_id,recording_link" % (EV, p.get("event_id"))).get("properties", {})
+        eta = (ADESSO - D.datetime.fromisoformat((p.get("hs_createdate") or "").replace("Z", "+00:00"))).total_seconds() / 60 if p.get("hs_createdate") else 0
+        if eta > 90 and ev.get("recording_link"):
+            senza.append("%s (ordine %s)" % (ev.get("external_id"), p.get("ordine_corso")))
+    (ko if senza else ok)("5 Dopo la diretta", ("nominati a corso finito senza link personale da oltre 90 minuti: " + ", ".join(sorted(set(senza))[:8])) if senza
+                          else "nominati a corso finito: %d con link personale inviato" % n_ok)
+
+
 def consegne():
     da = int((time.time() - 2 * 86400) * 1000)
     r = cerca(REG, [{"propertyName": "ordine_corso", "operator": "HAS_PROPERTY"}, {"propertyName": "hs_createdate", "operator": "GTE", "value": str(da)}], ["email", "status", "ordine_corso"])
@@ -629,7 +652,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, consegne, catalogo, lavori):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, nominati_registrazione, consegne, catalogo, lavori):
         try:
             f()
         except Exception as e:
