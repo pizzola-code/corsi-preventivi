@@ -18,6 +18,7 @@ import time
 
 import corsi_ordini as O
 import preventivi_corsi as C
+import registrazioni_personali as P
 
 EV, REG = O.EV, O.REG
 NOSTRI = re.compile(r"@(spaggiari\.eu|spaggiarinet\.eu|gruppospaggiari\.it)$", re.I)
@@ -41,7 +42,7 @@ def giro(os_, auto, prova=False):
     """os_: ordini nel giro (corsi_ordini.ordini_nuovi). Restituisce quante e-mail ha inviato (o inviarebbe)."""
     import os
     if os.path.exists(os.path.join(O.QUI, "pausa_registrazioni.txt")):
-        print("  registrazione illimitati: IN PAUSA (file pausa_registrazioni.txt): in attesa della pagina personale")
+        print("  registrazione illimitati: IN PAUSA (file pausa_registrazioni.txt)")
         return 0
     illim = {}                                    # base corso -> numeri d'ordine con licenza illimitata
     for o in os_:
@@ -78,21 +79,28 @@ def giro(os_, auto, prova=False):
             if not mail or mail in visti or NOSTRI.search(mail) or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", mail):
                 continue
             visti.add(mail)
-            chiave = "RECI|%s|%s" % (e["id"], mail)
+            chiave = "RECP|%s|%s" % (e["id"], mail)          # link PERSONALE (pagina guarda-registrazione), dal 16/10
             if chiave in gia:
                 continue
+            rinnovo = ("RECI|%s|%s" % (e["id"], mail)) in gia   # aveva gia' ricevuto il link diretto: gli arriva quello personale
             tot += 1
             nuove += 1
             if prova or not auto:
                 continue
+            scad = P.scadenza_iscrizione(i["id"])
+            url, scad = P.link(i["id"], e["id"], scad)
             r = C.hs("/marketing/v3/transactional/single-email/send", {
                 "emailId": O.EMAIL_REG, "message": {"to": mail},
-                "customProperties": {"nome": (i["properties"].get("first_name") or "").strip().title(), "evento": p["name"],
-                                     "quando": giorno, "link": p["recording_link"]}}, "POST")
+                "customProperties": {"nome": (i["properties"].get("first_name") or "").strip().title(),
+                                     "evento": p["name"] + (" (link personale)" if rinnovo else ""),
+                                     "quando": giorno, "link": url}}, "POST")
             if "_err" in r:
                 print("  registrazione illimitata: invio non riuscito (%s)" % r.get("_err"))
                 continue
             O.segna(chiave)
+            iso = lambda ms: datetime.datetime.fromtimestamp(ms / 1000, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            C.hs("/crm/v3/objects/%s/%s" % (REG, i["id"]), {"properties": {"registrazione_scadenza": iso(scad),
+                 "registrazione_link_inviato_il": iso(time.time() * 1000)}}, "PATCH")
             inviate += 1
             time.sleep(0.3)
         print("  registrazione illimitati · %s: %d iscritti degli ordini illimitati, %s %d" % (
