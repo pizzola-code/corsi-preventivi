@@ -21,7 +21,7 @@ def _tok(var, f):
 
 
 def api(percorso, metodo="GET", corpo=None, pagine=True):
-    t = _tok("HS_PAGES_TOKEN", ".hs_pages_token.txt") if pagine else _tok("HUBSPOT_TOKEN", ".hubspot_pat.txt")
+    t = _tok("HUBSPOT_TOKEN", ".hubspot_pat.txt")      # il PAT scrive anche le pagine (verificato 16/10)
     r = urllib.request.Request("https://api.hubapi.com" + percorso, method=metodo, data=json.dumps(corpo, ensure_ascii=False).encode("utf-8") if corpo is not None else None,
                                headers={"Authorization": "Bearer " + t, "Content-Type": "application/json; charset=utf-8"})
     x = urllib.request.urlopen(r, timeout=60).read().decode("utf-8")

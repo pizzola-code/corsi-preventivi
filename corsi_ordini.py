@@ -624,6 +624,12 @@ def main():
         chiusura_trattative.main(prova)
     except Exception as e:
         print("  ERRORE nella chiusura trattative: %s %s" % (type(e).__name__, str(e)[:160]))
+    if datetime.datetime.now().minute < 5 or os.environ.get("FORZA"):         # una volta all'ora: schede dei corsi svolti -> «Registrazione disponibile»
+        try:
+            import catalogo_registrazioni
+            catalogo_registrazioni.main(prova)
+        except Exception as e:
+            print("  ERRORE nell'aggiornamento del catalogo: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
         import formatori_senza_iscritti
         formatori_senza_iscritti.giro(prova)
