@@ -75,7 +75,7 @@ ZOOM_OK = bool(os.environ.get("ZOOM_S2S_JSON")) or os.path.exists(os.path.expand
 
 def zoom(metodo, percorso, corpo=None):
     if "k" not in _z:
-        cfg = json.loads(os.environ["ZOOM_S2S_JSON"].lstrip("Feff")) if os.environ.get("ZOOM_S2S_JSON") else json.load(io.open(os.path.expanduser("~/.zoom_s2s.json"), encoding="utf-8-sig"))
+        cfg = json.loads(os.environ["ZOOM_S2S_JSON"].lstrip("﻿")) if os.environ.get("ZOOM_S2S_JSON") else json.load(io.open(os.path.expanduser("~/.zoom_s2s.json"), encoding="utf-8-sig"))
         r = urllib.request.Request("https://zoom.us/oauth/token?grant_type=account_credentials&account_id=" + cfg["account_id"], method="POST",
                                    headers={"Authorization": "Basic " + base64.b64encode((cfg["client_id"] + ":" + cfg["client_secret"]).encode()).decode()})
         _z["k"] = json.load(urllib.request.urlopen(r, timeout=60))["access_token"]
