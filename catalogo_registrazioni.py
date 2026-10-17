@@ -163,6 +163,52 @@ def compatta_filtri(bozza):
     return True
 
 
+def etichetta_data(cards):
+    """Sulle registrazioni la data non si sceglie: al posto della tendina c'e' una etichetta (classe diversa da spg-corso-data, che
+    il codice della pagina legge come selettore: senza quel selettore il preventivo tiene il testo di data-quando, cioe' «Registrazione disponibile»)."""
+    n = 0
+    for c in cards:
+        d = c.get("c_desc") or ""
+        if ETICHETTA in d and '<select class="spg-corso-data"' in d:
+            nuovo = re.sub(r'<select class="spg-corso-data"[^>]*>.*?</select>',
+                           '<span class="spg-corso-data-label">%s</span>' % ETICHETTA, d, count=1, flags=re.S)
+            if nuovo != d:
+                c["c_desc"] = nuovo
+                n += 1
+    return n
+
+
+def esclusivita_registrazioni(bozza):
+    """«Registrazioni» e «Ordina per data» sono due scelte alternative: con Registrazioni attivo i pulsanti della data non risultano
+    attivi; scegliere una data spegne Registrazioni. Stile della etichetta di data. True se ha modificato qualcosa."""
+    f = bozza.get("footerHtml") or ""
+    if "spg-reg-esclusivo" in f or "spg-reg-sposta" not in f:
+        return False
+    a1 = "var verso = b.getAttribute('data-ord');"
+    a2 = "  gruppo.addEventListener('click', function(ev){"
+    a3 = "  ordina('asc');\n})();"
+    a4 = ".spg-ord:focus-visible{outline:3px solid #e8b547;outline-offset:2px}"
+    if not all(x in f for x in (a1, a2, a3, a4)):
+        return False
+    f = f.replace(a1, a1 + " ultimoVerso = verso; if (regBtn && regBtn.getAttribute('aria-pressed') === 'true') { regBtn.click(); }  /* spg-reg-esclusivo */", 1)
+    f = f.replace(a2, "  var ultimoVerso = 'asc';\n" + a2, 1)
+    sync = (
+        "  // Registrazioni e ordinamento per data sono alternativi: i pulsanti della data si accendono solo se Registrazioni e' spento\n"
+        "  document.addEventListener('click', function(ev){\n"
+        "    var fl = ev.target.closest ? ev.target.closest('.spg-filtri .spg-filtro, .spg-ordina .spg-filtro') : null;\n"
+        "    if (!fl) { return; }\n"
+        "    var reg = regBtn && regBtn.getAttribute('aria-pressed') === 'true';\n"
+        "    Array.prototype.forEach.call(gruppo.querySelectorAll('.spg-ord'), function(x){\n"
+        "      x.setAttribute('aria-pressed', (!reg && x.getAttribute('data-ord') === ultimoVerso) ? 'true' : 'false');\n"
+        "    });\n"
+        "  });\n\n")
+    f = f.replace(a3, sync + a3, 1)
+    f = f.replace(a4, a4 + "\n.spg-corso-data-label{display:inline-block;font:700 13px/1.3 Arial,Helvetica,sans-serif;color:#06484b;"
+                          "background:rgba(111,194,231,.28);border-radius:8px;padding:5px 11px}", 1)
+    bozza["footerHtml"] = f
+    return True
+
+
 def main(prova):
     pal = {x["base"]: x for x in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "corsi_palinsesto.json"), encoding="utf-8"))}
     ora = datetime.datetime.now(datetime.timezone.utc)
@@ -209,9 +255,13 @@ def main(prova):
                 n_ill += 1
     if n_ill:
         print("licenza illimitata tolta da %d schede in registrazione" % n_ill)
-    filtri = assicura_filtri(bozza, cards) or bool(n_ill)
+    n_lab = etichetta_data(cards)
+    if n_lab:
+        print("tendina della data sostituita da etichetta in %d schede" % n_lab)
+    filtri = assicura_filtri(bozza, cards) or bool(n_ill) or bool(n_lab)
     filtri = sposta_pulsante(bozza) or filtri
     filtri = compatta_filtri(bozza) or filtri
+    filtri = esclusivita_registrazioni(bozza) or filtri
     print("schede da portare a «%s»: %s%s" % (ETICHETTA, ", ".join(cambi) or "nessuna", " · filtri/conteggi da aggiornare" if filtri else ""))
     if senza:
         print("corsi passati SENZA registrazione (invariati): %s" % ", ".join(senza))
