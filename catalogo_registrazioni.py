@@ -198,7 +198,18 @@ def main(prova):
         nuovo = nuovo.replace('<span class="spg-corso-relatore-et">Quando</span>', '<span class="spg-corso-relatore-et">Registrazione</span>', 1)
         c["c_desc"] = nuovo
         cambi.append(v["codice"])
-    filtri = assicura_filtri(bozza, cards)
+    # 17/10/2026 (Andrea): sulle registrazioni non si vende la licenza ILLIMITATA, solo 1 o 3 partecipanti (l'illimitata resta per le dirette future)
+    n_ill = 0
+    for c in cards:
+        d = c.get("c_desc") or ""
+        if ETICHETTA in d and 'data-licenza="Illimitato"' in d:
+            nuovo_d = re.sub(r'<li><button[^>]*data-licenza="Illimitato".*?</button></li>', "", d, flags=re.S)
+            if nuovo_d != d:
+                c["c_desc"] = nuovo_d
+                n_ill += 1
+    if n_ill:
+        print("licenza illimitata tolta da %d schede in registrazione" % n_ill)
+    filtri = assicura_filtri(bozza, cards) or bool(n_ill)
     filtri = sposta_pulsante(bozza) or filtri
     filtri = compatta_filtri(bozza) or filtri
     print("schede da portare a «%s»: %s%s" % (ETICHETTA, ", ".join(cambi) or "nessuna", " · filtri/conteggi da aggiornare" if filtri else ""))
