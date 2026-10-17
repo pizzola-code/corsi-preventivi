@@ -228,7 +228,11 @@ def corsi_gia_iniziati(righe):
     fuori = []
     for r in righe:
         if "registrazione" in (r.get("quando") or "").lower():
-            continue          # 16/10/2026: corso svolto con registrazione su Vimeo, acquistabile (stesso codice e prezzo)
+            # 16/10/2026: corso svolto con registrazione su Vimeo, acquistabile (stesso codice e prezzo), ma NON con la licenza
+            # illimitata (17/10, Andrea): una pagina rimasta in cache potrebbe ancora offrirla -> fuori dal preventivo, avviso interno
+            if (r.get("codice") or "").upper().endswith("-I") or "illimitat" in (r.get("licenza") or "").lower():
+                fuori.append(r)
+            continue
         cod = re.sub(r"-(1|3|I)$", "", (r.get("codice") or "").upper().split()[0]) if r.get("codice") else ""   # «WBRELEBILC-3» -> «WBRELEBILC»
         ini = inizi.get(cod)
         if ini and ini - datetime.timedelta(minutes=CHIUSURA_NOMINE_MIN) <= adesso:
