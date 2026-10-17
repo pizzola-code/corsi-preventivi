@@ -9,5 +9,19 @@
 "ordine_erp_sbagliato",
 "zoom_non_controllato"
 ]
+},
+{
+"data": "2026-10-17",
+"ok": 17,
+"fix": [
+"zoom_corretto"
+],
+"ko": [
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"ordine_erp_sbagliato",
+"registrazione_illimitati",
+"registrazione_mancante"
+]
 }
 ]
