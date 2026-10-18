@@ -23,5 +23,15 @@
 "registrazione_illimitati",
 "registrazione_mancante"
 ]
+},
+{
+"data": "2026-10-18",
+"ok": 18,
+"fix": [],
+"ko": [
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"ordine_erp_sbagliato"
+]
 }
 ]
