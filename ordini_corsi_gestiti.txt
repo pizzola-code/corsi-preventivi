@@ -505,3 +505,5 @@ RECP|454838808808|marilena.ponzo@artisticogallizio.it
 RECP|454838808808|angelo.giaconia@classicogovone.it
 RECP|454838808808|tecnico@classicogovone.it
 527406147791|WBRELEPLSD|avviso_preventivo
+2026EN16957|sollecito_ordine
+2026EN16957|allerta_agente
