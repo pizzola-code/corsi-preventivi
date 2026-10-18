@@ -52,6 +52,17 @@ jobs:
           FORZA: '1'      # il ritmo lo da' cron-job.org: niente filtro sul minuto
         run: python corsi_ordini.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
 
+      # Promemoria progressivi a chi ha chiesto un preventivo (Andrea 18/10/2026): 7, 14, 21, 28 giorni, feriali 9-17.
+      # Acceso dalla variabile SOLLECITI_PREVENTIVI (1 = acceso); lo stato sta sulla trattativa, quindi niente registro.
+      - name: Promemoria ai richiedenti dei preventivi
+        continue-on-error: true
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          SOLLECITI_PREVENTIVI: ${{ vars.SOLLECITI_PREVENTIVI }}
+        run: python solleciti_preventivi.py ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '--prova' || '' }}
+
       - name: Salva il registro degli ordini
         if: always()
         run: |
