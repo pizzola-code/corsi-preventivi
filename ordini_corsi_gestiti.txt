@@ -507,3 +507,4 @@ RECP|454838808808|tecnico@classicogovone.it
 527406147791|WBRELEPLSD|avviso_preventivo
 2026EN16957|sollecito_ordine
 2026EN16957|allerta_agente
+522794814687|WBRELECVSEC|avviso_preventivo
