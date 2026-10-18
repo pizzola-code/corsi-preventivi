@@ -1,0 +1,2 @@
+# Eccezioni confermate da Andrea: l'audit non le segnala piu'. Formato: tipo|ordine|motivo
+oltre_posti|2026EN17354|4 iscritti su 3 posti: confermato da Andrea il 18/10/2026

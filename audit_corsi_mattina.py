@@ -522,7 +522,17 @@ def ordini_sospetti():
             elif posti[o["num"]][m.group(1)] >= 0:
                 posti[o["num"]][m.group(1)] += int(m.group(2)) * max(1, o.get("qta") or 1)
         oltre = []
+        eccezioni = set()
+        try:                                    # eccezioni confermate da Andrea (audit_eccezioni.txt): non si segnalano piu'
+            for riga in io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "audit_eccezioni.txt"), encoding="utf-8"):
+                p_ = riga.strip().split("|")
+                if len(p_) >= 2 and not riga.startswith("#") and p_[0] == "oltre_posti":
+                    eccezioni.add(p_[1])
+        except FileNotFoundError:
+            pass
         for num, per in posti.items():
+            if num in eccezioni:
+                continue
             isc = cerca(REG, [{"propertyName": "ordine_corso", "operator": "EQ", "value": num}, {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}], ["event_name", "email"])
             if not isc:
                 continue
