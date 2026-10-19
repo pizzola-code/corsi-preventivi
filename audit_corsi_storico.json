@@ -33,5 +33,14 @@
 "iscritti_oltre_posti",
 "ordine_erp_sbagliato"
 ]
+},
+{
+"data": "2026-10-19",
+"ok": 19,
+"fix": [],
+"ko": [
+"indirizzo_errato",
+"ordine_erp_sbagliato"
+]
 }
 ]
