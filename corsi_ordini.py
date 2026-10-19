@@ -663,6 +663,13 @@ def main():
         chiusura_trattative.main(prova)
     except Exception as e:
         print("  ERRORE nella chiusura trattative: %s %s" % (type(e).__name__, str(e)[:160]))
+    if os.path.exists(os.path.join(QUI, "solleciti_preventivi_attivo.txt")) and (datetime.datetime.now().minute < 5 or os.environ.get("FORZA")):
+        # seguito ai preventivi aperti (Andrea 19/10/2026): il gruppo B parte a 48 ore dal corso; si ferma cancellando il file di attivazione
+        try:
+            import sollecito_preventivi
+            sollecito_preventivi.giro(invia_davvero=(not prova and auto), mostra=False)
+        except Exception as e:
+            print("  ERRORE nel seguito ai preventivi: %s %s" % (type(e).__name__, str(e)[:160]))
     if datetime.datetime.now().minute < 5 or os.environ.get("FORZA"):         # una volta all'ora: schede dei corsi svolti -> «Registrazione disponibile»
         try:
             import catalogo_registrazioni

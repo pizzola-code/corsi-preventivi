@@ -1,0 +1,1 @@
+Presente = il giro orario manda il seguito ai preventivi aperti (gruppo B a 48 ore dal corso). Cancellare il file per fermarlo.
