@@ -13,7 +13,7 @@ Valori PROVVISORI da confermare (cercare «DA CONFERMARE»):
   - pipeline e stadi: si usa Formazione come per i corsi Spaggiari, trattativa «Italiascuola N - scuola»
   - proprietario: agente di zona, altrimenti turno Maestri/Benassi/Tonelli (come i corsi Spaggiari)
   - testi IVA / modalita' d'acquisto / ragione sociale in preventivo (distribuzione Spaggiari di corsi Italiascuola)
-  - mittente: no_reply@spaggiari.eu col nome «Italiascuola.it»; risposte a info@italiascuola.it
+  - mittente: no_reply@spaggiari.eu col nome «Italiascuola.it»; risposte a svilupposcuola@spaggiari.eu
 
 Riga del carrello (scritta dalla landing):
   <Titolo> — <Modalita'> · <n> partecipante/i[ xQ] — <totale> EUR[ — <quando>] — cod. <SKU completo>
@@ -48,7 +48,7 @@ MODULO = "80432743-422f-405f-83bf-df4184a4ee4c"              # form Italiascuola
 REGISTRO = os.path.join(QUI, "inviati_italiascuola.txt")
 MITTENTE = "no_reply@spaggiari.eu"
 NOME_MITTENTE = "Italiascuola.it"
-RISPOSTE = "info@italiascuola.it"
+RISPOSTE = "svilupposcuola@spaggiari.eu"
 SEP = C.SEP
 VERDE = "#00733a"
 # Il motore nasce con la landing: tutto cio' che e' arrivato prima (prove) non si lavora.

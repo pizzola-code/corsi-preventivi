@@ -2,7 +2,7 @@
 """Mappa codice articolo -> pagina del prodotto su ScuolaShop, canale Scuole (www.scuolashop.it/scuole/...).
 
 Il motore dei preventivi la legge per mettere nel preventivo e nell'email il link a ogni corso e per sapere quali codici
-NON sono ancora ordinabili online (in quel caso il testo rimanda a info@italiascuola.it).
+NON sono ancora ordinabili online (in quel caso il testo rimanda a svilupposcuola@spaggiari.eu).
 Solo prodotti attivi WBRITA* / ITAC*. Scrive shop_scuole.json. Da rilanciare dopo ogni caricamento prodotti sullo shop.
 
   python genera_shop_scuole.py
