@@ -241,8 +241,8 @@ def invia(s):
 def giro(invia_davvero=False, mostra=True):
     gia = O.registro()
     adesso = datetime.datetime.now(datetime.timezone.utc)
-    n = 0
-    visti = set()
+    visti = set()                      # un solo messaggio per indirizzo (due trattative della stessa scuola non raddoppiano la posta)
+    pronti = []
     for s in costruisci():
         k = "%s|sollecito_prev_%s" % (s["deal"], s["gruppo"])
         if k in gia:
@@ -251,22 +251,35 @@ def giro(invia_davvero=False, mostra=True):
             if mostra:
                 print("  [B in attesa] %s · %s · parte dal %s" % (s["scuola"][:40], s["righe"][0]["base"], s["quando_b"].strftime("%d/%m %H:%M UTC")))
             continue
-        kmail = "sollecito_prev|%s" % hashlib.sha1(s["email"].encode()).hexdigest()[:16]     # una sola e-mail per indirizzo, per sempre (nessun indirizzo in chiaro nel registro)
+        kmail = "sollecito_prev|%s" % hashlib.sha1(s["email"].encode()).hexdigest()[:16]     # una e-mail per indirizzo, per sempre (nessun indirizzo in chiaro nel registro)
         if kmail in gia or s["email"] in visti:
             if mostra:
                 print("  [salto: questo indirizzo ha gia' ricevuto il seguito] trattativa %s" % s["deal"])
             continue
         visti.add(s["email"])
+        pronti.append((s, k, kmail))
+    atteso = os.environ.get("ATTESO")
+    if invia_davvero and atteso and len(pronti) != int(atteso):
+        print("
+INTERROTTO: i messaggi pronti sono %d, ne erano attesi %s (elenco approvato): nessun invio" % (len(pronti), atteso))
+        return 0
+    inviati = 0
+    for s, k, kmail in pronti:
         oggetto, _, corpo = testo(s)
-        n += 1
         if mostra:
-            print("\n=== %s · trattativa %s · a %s · cc %s ===\nOggetto: %s\n%s" % (s["gruppo"], s["deal"], s["email"], s["agente"] or "-", oggetto, corpo))
+            print("
+=== %s · trattativa %s · a %s · cc %s ===
+Oggetto: %s
+%s" % (s["gruppo"], s["deal"], s["email"], s["agente"] or "-", oggetto, corpo))
         if invia_davvero:
             if invia(s):
                 O.segna(k)
                 O.segna(kmail)
-    print("\nda inviare ora: %d" % n)
-    return n
+                inviati += 1
+                print("   -> inviato (%s, trattativa %s)" % (s["gruppo"], s["deal"]))
+    print("
+pronti: %d | inviati: %d" % (len(pronti), inviati))
+    return inviati
 
 
 if __name__ == "__main__":
