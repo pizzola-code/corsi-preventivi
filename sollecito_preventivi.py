@@ -260,25 +260,20 @@ def giro(invia_davvero=False, mostra=True):
         pronti.append((s, k, kmail))
     atteso = os.environ.get("ATTESO")
     if invia_davvero and atteso and len(pronti) != int(atteso):
-        print("
-INTERROTTO: i messaggi pronti sono %d, ne erano attesi %s (elenco approvato): nessun invio" % (len(pronti), atteso))
+        print("\nINTERROTTO: i messaggi pronti sono %d, ne erano attesi %s (elenco approvato): nessun invio" % (len(pronti), atteso))
         return 0
     inviati = 0
     for s, k, kmail in pronti:
         oggetto, _, corpo = testo(s)
         if mostra:
-            print("
-=== %s · trattativa %s · a %s · cc %s ===
-Oggetto: %s
-%s" % (s["gruppo"], s["deal"], s["email"], s["agente"] or "-", oggetto, corpo))
+            print("\n=== %s · trattativa %s · a %s · cc %s ===\nOggetto: %s\n%s" % (s["gruppo"], s["deal"], s["email"], s["agente"] or "-", oggetto, corpo))
         if invia_davvero:
             if invia(s):
                 O.segna(k)
                 O.segna(kmail)
                 inviati += 1
                 print("   -> inviato (%s, trattativa %s)" % (s["gruppo"], s["deal"]))
-    print("
-pronti: %d | inviati: %d" % (len(pronti), inviati))
+    print("\npronti: %d | inviati: %d" % (len(pronti), inviati))
     return inviati
 
 
