@@ -530,3 +530,6 @@ sollecito_prev|2d3094fac5983a8a
 sollecito_prev|d81efe6b682a99c6
 526442772722|sollecito_prev_A
 sollecito_prev|b2be7ca753a7d13d
+RECP|454033207508|luca.lopiccoli@scuolarodari.edu.it
+RECP|454033207508|elenamaria.colciago@scuolarodari.edu.it
+RECP|454033207508|assunta.dipietro@scuolarodari.edu.it
