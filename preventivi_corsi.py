@@ -244,6 +244,53 @@ def sconto_per(n):
     return 30 if n > 5 else (20 if n >= 4 else (10 if n >= 3 else 0))      # stesse soglie della pagina
 
 
+def converti_in_registrazioni(righe, v):
+    """20/10/2026 (caso Pira/Deledda del 15/10): un corso gia' SVOLTO, con la registrazione su Vimeo, non si toglie in silenzio dal
+    preventivo: diventa «Registrazione disponibile» (stesso codice e prezzo), cosi' i corsi restano tutti e lo sconto per numero di
+    corsi non cambia. L'illimitata (-I) e i corsi senza registrazione restano alla guardia che li toglie. Aggiorna anche l'elenco
+    `corsi_richiesti` del modulo, da cui nascono preventivo e descrizione della trattativa. Ritorna le righe convertite."""
+    try:
+        pal = {x["codice"].upper(): x for x in json.load(io.open(os.path.join(QUI, "corsi_palinsesto.json"), encoding="utf-8"))}
+    except Exception:
+        return []
+    adesso = datetime.datetime.now(datetime.timezone.utc)
+    convertiti = []
+    for r in righe:
+        cod = (r.get("codice") or "").upper().split()[0] if r.get("codice") else ""
+        if not cod or cod.endswith("-I") or "registrazione" in (r.get("quando") or "").lower():
+            continue
+        voce = pal.get(re.sub(r"-(1|3|I)$", "", cod))
+        if not voce:
+            continue
+        a, m, g = map(int, voce["data"].split("-"))
+        h, mi = map(int, voce["fine"].split(":"))
+        fine = datetime.datetime(a, m, g, h - (2 if datetime.datetime(a, m, g, h, mi) < datetime.datetime(2026, 10, 25, 1, 0) else 1), mi, tzinfo=datetime.timezone.utc)
+        if fine > adesso:
+            continue                                     # il corso non e' finito: resta com'e' (guardia dei corsi iniziati)
+        ext = "CF-%s-%02d%02d" % (voce["base"], g, m)
+        ev = hs("/crm/v3/objects/2-143900361/search", {"filterGroups": [{"filters": [
+            {"propertyName": "external_id", "operator": "EQ", "value": ext},
+            {"propertyName": "recording_link", "operator": "HAS_PROPERTY"}]}], "properties": ["external_id"], "limit": 1}, "POST")
+        if not ev.get("results"):
+            continue                                     # senza registrazione non c'e' nulla da vendere: lo toglie la guardia
+        vecchio = r.get("quando") or ""
+        r["quando"] = "Registrazione disponibile"
+        righe_testo = []
+        for riga in (v.get("corsi_richiesti") or "").split("\n"):
+            if ("cod. " + r["codice"]) in riga:
+                parti = riga.split(SEP)
+                k = next((i for i, x in enumerate(parti) if x.strip().lower().startswith("cod. ")), None)
+                if k is not None and k >= 1 and not parti[k - 1].strip().lower().endswith("eur"):
+                    parti[k - 1] = "Registrazione disponibile"
+                elif k is not None:
+                    parti.insert(k, "Registrazione disponibile")
+                riga = SEP.join(parti)
+            righe_testo.append(riga)
+        v["corsi_richiesti"] = "\n".join(righe_testo)
+        convertiti.append(r)
+    return convertiti
+
+
 def avviso_corsi_passati(scuola, email, tolti, restano):
     utente, chiave = os.environ.get("SMTP_CORSI_USER"), os.environ.get("SMTP_CORSI_PASS")
     if not (utente and chiave):
@@ -703,6 +750,9 @@ def lavora(inv, prova):
     stato, ripresa = stato_richiesta(chiave)
     if stato == "fatta":
         return
+    conv = converti_in_registrazioni(righe, v)
+    if conv:
+        print("  corsi gia' svolti convertiti in registrazione: %s" % ", ".join(sorted({r["codice"] for r in conv})))
     # Guardia (audit 7/10): corsi gia' iniziati nella richiesta -> fuori dal preventivo, avviso interno
     tolti = corsi_gia_iniziati(righe)
     if tolti and not prova:
