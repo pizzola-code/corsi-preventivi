@@ -17,7 +17,8 @@ import ssl
 import sys
 from email.message import EmailMessage
 
-os.environ.setdefault("HUBSPOT_TOKEN", open(os.path.expanduser("~/.hs_pages_token.txt")).read().strip())
+if not os.environ.get("HUBSPOT_TOKEN"):
+    os.environ["HUBSPOT_TOKEN"] = open(os.path.expanduser("~/.hs_pages_token.txt")).read().strip()
 import preventivi_corsi as P  # noqa: E402
 
 LISTA_OPPOSIZIONI = "5979"
