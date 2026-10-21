@@ -1,0 +1,52 @@
+name: grazie-servizio-19ott
+
+# UNA TANTUM (Andrea, 21/10/2026): seconda tranche del grazie di servizio, ai 60 che hanno frequentato il corso del 19/10
+# (la prima, 112 persone fino al 16/10, e' partita il 21/10). Giovedi' 22/10 alle 10:30 di Roma, a distanza dalla mail
+# «Registrazione disponibile». Il registro impedisce ogni doppio invio. DA ELIMINARE dopo il 22/10.
+on:
+  workflow_dispatch:
+    inputs:
+      prova:
+        description: "Solo prova: elenca i destinatari"
+        type: boolean
+        default: false
+  schedule:
+    - cron: '30 8 22 10 *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grazie-servizio
+  cancel-in-progress: false
+
+jobs:
+  grazie:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ultimo commit (registro aggiornato)
+        run: |
+          git fetch -q origin main
+          git reset -q --hard origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Grazie di servizio, tranche del 19/10
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+        run: |
+          python grazie_servizio.py --dal 2026-10-19 --fino 2026-10-19 ${{ (github.event_name == 'workflow_dispatch' && inputs.prova) && '' || '--invia' }}
+      - name: Salva il registro degli invii
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain inviati.txt)" ]; then
+            git config user.name "motore-preventivi"
+            git config user.email "no_reply@spaggiari.eu"
+            git add inviati.txt
+            git commit -m "registro: grazie di servizio (tranche 19/10)"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 3; done
+          fi
