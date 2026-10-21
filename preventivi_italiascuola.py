@@ -131,7 +131,7 @@ def blocco_ordine_email(righe):
 
 
 CONDIZIONI = ("Offerta valida 30 giorni. I corsi sono erogati da Italiascuola.it e distribuiti da "
-              "Gruppo Spaggiari Parma S.p.A. Importi in euro; il regime IVA applicabile è indicato in fattura.")  # DA CONFERMARE
+              "Gruppo Spaggiari Parma S.p.A. Importi in euro, operazione esente IVA ai sensi dell'art. 10 D.P.R. 633/1972.")  # Alice Bui (Finance), 20/10/2026: IVA esente art. 10
 
 
 def righe_is(testo):
