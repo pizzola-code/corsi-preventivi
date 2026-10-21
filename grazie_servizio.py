@@ -5,6 +5,7 @@ Nessun blocco commerciale (chi ha il consenso riceve la bozza HubSpot «Grazie e
 (lista 5979) e disiscritti. Una volta per persona e per corso: chiave `grazie_servizio|<contatto>|<data ultimo corso>` nel registro.
 
   python grazie_servizio.py            prova: elenca chi riceverebbe cosa, non spedisce
+  --fino AAAA-MM-GG / --dal AAAA-MM-GG   limitano per data dell'ultimo corso frequentato (es. due tranche: 21/10 fino al 16/10, 22/10 il 19/10)
   python grazie_servizio.py --invia    spedisce (da no_reply@spaggiari.eu, Reply-To mepa@); MAX=<n> limita i messaggi
 
 NON e' ancora nel giro automatico: si accende solo con l'ok di Andrea.
@@ -88,7 +89,12 @@ def main():
     massimo = int(os.environ.get("MAX", "0") or 0)
     gia = P.registro()
     pronti = []
+    fino = sys.argv[sys.argv.index("--fino") + 1] if "--fino" in sys.argv else None
+    dal = sys.argv[sys.argv.index("--dal") + 1] if "--dal" in sys.argv else None
     for cid, p in destinatari():
+        d = (p.get("data_ultimo_corso") or "")[:10]
+        if (fino and d > fino) or (dal and d < dal):
+            continue
         k = "grazie_servizio|%s|%s" % (cid, (p.get("data_ultimo_corso") or "")[:10])
         if P.impronta(k) in gia:
             continue
