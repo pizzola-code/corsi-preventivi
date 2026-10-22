@@ -96,7 +96,8 @@ def nota_preventivo(righe):
          "3. Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.<br>"
          "Dopo l'ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi; con la diretta il link vale anche per la registrazione.<br>" % NEGOZIO_HOME)
     if ill:
-        h += "La registrazione illimitata vale per tutta la scuola e si ordina senza elenco dei partecipanti.<br>"
+        h += ("Registrazione illimitata: valida per tutta la scuola, si ordina in una sola unità. L'elenco delle persone si compila dopo l'ordine, "
+              "nel modulo che la scuola riceve all'indirizzo istituzionale; con ClasseViva le persone si attivano dal pannello e il link viene pubblicato in bacheca.<br>")
     if disp:
         h += "<br><b>Apri i corsi sullo shop</b><br>" + "<br>".join(
             '%s: <a href="%s">%s</a>' % (r["codice"], u, titolo_riga(r)) for r, u in disp) + "<br>"
@@ -119,7 +120,7 @@ def blocco_ordine_email(righe):
          'Con la diretta il link vale anche per la registrazione.%s</p>'
          '<p style="margin:14px 0 4px"><a href="%s" style="background:#e8b547;color:%s;text-decoration:none;font-weight:700;'
          'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>'
-         % (VERDE, " La registrazione illimitata vale per tutta la scuola e si ordina senza elenco dei partecipanti." if ill else "",
+         % (VERDE, " Registrazione illimitata: valida per tutta la scuola, si ordina in una sola unità. L&rsquo;elenco delle persone si compila dopo l&rsquo;ordine, nel modulo che la scuola riceve all&rsquo;indirizzo istituzionale; con ClasseViva le persone si attivano dal pannello e il link viene pubblicato in bacheca." if ill else "",
             NEGOZIO_HOME, VERDE))
     if disp:
         h += '<p style="margin:10px 0 0">' + "<br>".join(
@@ -437,8 +438,8 @@ def test():
     assert all(u.startswith("https://www.scuolashop.it/scuole/") for _, u in disp)
     ill = righe_is("Gestione permessi — Registrazione illimitata · tutta la scuola — 394 EUR — cod. WBRITAPCB2-I")
     assert ill[0]["qta"] == 1 and ill[0]["totale"] == 394.0 and ill[0]["licenza"].startswith("Registrazione illimitata"), ill
-    assert "senza elenco dei partecipanti" in nota_preventivo(ill) and "senza elenco dei partecipanti" in blocco_ordine_email(ill)
-    assert "senza elenco dei partecipanti" not in nota_preventivo(campione) and "senza elenco dei partecipanti" not in blocco_ordine_email(campione)
+    assert "Registrazione illimitata: valida per tutta la scuola" in nota_preventivo(ill) and "Registrazione illimitata: valida per tutta la scuola" in blocco_ordine_email(ill)
+    assert "Registrazione illimitata" not in nota_preventivo(campione) and "Registrazione illimitata" not in blocco_ordine_email(campione)
     assert "ORDINA SU SCUOLASHOP" in blocco_ordine_email(ill) and 'href="https://www.scuolashop.it/scuole/' in blocco_ordine_email(ill)
     print("test ok: 4 righe, quantita', trattino nel titolo, email, note e link ScuolaShop, registrazione illimitata")
 

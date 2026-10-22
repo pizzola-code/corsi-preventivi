@@ -85,14 +85,17 @@ def segna(chiave):
         f.write(hashlib.sha256(chiave.encode("utf-8")).hexdigest() + "\n")
 
 
-def avvisa(oggetto, testo):
+OPERATIVA = "svilupposcuola@spaggiari.eu"
+
+
+def avvisa(oggetto, testo, a=None):
     utente, chiave = os.environ.get("SMTP_CORSI_USER"), os.environ.get("SMTP_CORSI_PASS")
     if not (utente and chiave):
         print("  avviso non inviato: credenziali SMTP assenti")
         return
     m = EmailMessage()
     m["From"] = "Italiascuola.it <%s>" % C.MITTENTE
-    m["To"] = C.CONTROLLO
+    m["To"] = a or C.CONTROLLO
     m["Subject"] = oggetto
     m.set_content(testo)
     s = smtplib.SMTP(C.SMTP_HOST, C.SMTP_PORTA, timeout=60)
@@ -191,6 +194,18 @@ def main(prova=None):
         if not prova:
             C.hs("/crm/v3/objects/deals/%s" % tid, {"properties": {"dealstage": stadio}}, "PATCH")
             fatte += 1
+            ill = sorted(c for c in cod_f[tid] if c.endswith("-I"))
+            k = "illimitata|%s" % ordine
+            if stadio == VINTA and ill and hashlib.sha256(k.encode("utf-8")).hexdigest() not in registro():
+                try:
+                    avvisa("Registrazione illimitata da consegnare: %s" % nome,
+                           "L'ordine %s della richiesta «%s» comprende la registrazione illimitata (%s).\n\n"
+                           "Procedura: se la scuola usa ClasseViva, le persone si attivano dal pannello ClasseViva e il link viene pubblicato "
+                           "dalla scuola in bacheca. Altrimenti inviare all'indirizzo istituzionale il file «partecipanti», caricare le persone "
+                           "in ETB e far partire il link a ciascuna." % (ordine, nome, ", ".join(ill)), OPERATIVA)
+                    segna(k)
+                except Exception as err:
+                    print("  avviso non inviato:", type(err).__name__)
     print("trattative da chiudere: %d · chiuse ora: %d" % (len(mosse), fatte))
 
 
