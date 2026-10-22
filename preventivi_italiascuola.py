@@ -94,7 +94,8 @@ def nota_preventivo(righe):
          "Se la scuola non è ancora registrata, si registra dalla stessa pagina.<br>"
          "2. Cerca i codici articolo di questo preventivo, oppure apri i collegamenti qui sotto, e aggiungili al carrello.<br>"
          "3. Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.<br>"
-         "Dopo l'ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi; con la diretta il link vale anche per la registrazione.<br>" % NEGOZIO_HOME)
+         "Dopo l'ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi; con la diretta il link vale anche per la registrazione.<br>"
+         "Soci ANP: la gratuità si applica su ScuolaShop al termine dell'ordine, indicando il codice fiscale del socio.<br>" % NEGOZIO_HOME)
     if ill:
         h += ("Registrazione illimitata: valida per tutta la scuola, si ordina in una sola unità. L'elenco delle persone si compila dopo l'ordine, "
               "nel modulo che la scuola riceve all'indirizzo istituzionale; con ClasseViva le persone si attivano dal pannello e il link viene pubblicato in bacheca.<br>")
@@ -117,7 +118,7 @@ def blocco_ordine_email(righe):
          '<li>Cerca i codici articolo del preventivo, oppure apri i corsi dai collegamenti qui sotto, e aggiungili al carrello.</li>'
          '<li>Per ogni partecipante indica nome, cognome, funzione ed e-mail professionale diretta, e scegli il bonifico differito.</li></ol>'
          '<p style="margin:8px 0 0">Dopo l&rsquo;ordine il link di accesso arriva a quegli indirizzi, senza altri passaggi. '
-         'Con la diretta il link vale anche per la registrazione.%s</p>'
+         'Con la diretta il link vale anche per la registrazione. Soci ANP: la gratuit&agrave; si applica su ScuolaShop al termine dell&rsquo;ordine, indicando il codice fiscale del socio.%s</p>'
          '<p style="margin:14px 0 4px"><a href="%s" style="background:#e8b547;color:%s;text-decoration:none;font-weight:700;'
          'padding:12px 20px;border-radius:10px;display:inline-block">ORDINA SU SCUOLASHOP</a></p>'
          % (VERDE, " Registrazione illimitata: valida per tutta la scuola, si ordina in una sola unità. L&rsquo;elenco delle persone si compila dopo l&rsquo;ordine, nel modulo che la scuola riceve all&rsquo;indirizzo istituzionale; con ClasseViva le persone si attivano dal pannello e il link viene pubblicato in bacheca." if ill else "",
@@ -157,7 +158,7 @@ def righe_is(testo):
                 v["codice"] = pezzo[5:].strip()
             else:
                 v["quando"] = pezzo
-        v["unitario"] = round(v["totale"] / v["qta"], 2) if v["qta"] else v["totale"]
+        v["unitario"] = round(v["totale"] / v["qta"], 4) if v["qta"] else v["totale"]
         fuori.append(v)
     return fuori
 

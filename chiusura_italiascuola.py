@@ -130,12 +130,50 @@ def trattative_aperte():
         r = C.hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
             {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE_IS},
             {"propertyName": "dealstage", "operator": "IN", "values": STADI_APERTI}]}],
-            "properties": ["dealname", "createdate", "dealstage"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
+            "properties": ["dealname", "createdate", "dealstage", "hubspot_owner_id"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
         out += r.get("results", [])
         dopo = (r.get("paging") or {}).get("next", {}).get("after")
         if not dopo:
             break
     return out
+
+
+GIORNI_PROMEMORIA = 15     # Tonelli, 22/10/2026: il ciclo e' corto, meglio 15 giorni che 30
+
+
+def crea_promemoria(deal_id, nome, owner):
+    """Compito per l'agente della trattativa: richiamare la scuola che ha il preventivo ma non l'ordine."""
+    ora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    props = {"hs_timestamp": ora, "hs_task_subject": "Richiama la scuola: preventivo Italiascuola senza ordine (%s)" % nome,
+             "hs_task_body": "Sono passati %d giorni dal preventivo Italiascuola e non risulta l'ordine su ScuolaShop. "
+                             "Un richiamo gentile alla scuola aiuta a capire se serve una mano con l'ordine." % GIORNI_PROMEMORIA,
+             "hs_task_status": "NOT_STARTED", "hs_task_priority": "MEDIUM", "hs_task_type": "CALL"}
+    if owner:
+        props["hubspot_owner_id"] = owner
+    return C.hs("/crm/v3/objects/tasks", {"properties": props, "associations": [
+        {"to": {"id": str(deal_id)}, "types": [{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 216}]}]}, "POST")
+
+
+def promemoria(aperte, escluse, prova):
+    soglia = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=GIORNI_PROMEMORIA)
+    n = 0
+    for f in aperte:
+        if f["id"] in escluse:
+            continue
+        creata = datetime.datetime.fromisoformat(f["properties"]["createdate"].replace("Z", "+00:00"))
+        k = "promemoria|%s" % f["id"]
+        if creata > soglia or hashlib.sha256(k.encode("utf-8")).hexdigest() in registro():
+            continue
+        print("  promemoria: %s (creata il %s)" % (f["properties"]["dealname"], creata.strftime("%d/%m")))
+        if prova:
+            continue
+        r = crea_promemoria(f["id"], f["properties"]["dealname"], f["properties"].get("hubspot_owner_id"))
+        if r.get("id"):
+            segna(k)
+            n += 1
+        else:
+            print("  promemoria non creato:", str(r)[:200])
+    return n
 
 
 def ordini_di(oggetto, oid, da_ms):
@@ -207,6 +245,7 @@ def main(prova=None):
                 except Exception as err:
                     print("  avviso non inviato:", type(err).__name__)
     print("trattative da chiudere: %d · chiuse ora: %d" % (len(mosse), fatte))
+    print("promemoria creati: %d" % promemoria(aperte, set(mosse), prova))
 
 
 def test():
