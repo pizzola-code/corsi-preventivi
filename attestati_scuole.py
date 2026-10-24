@@ -228,7 +228,7 @@ def main():
     for v in senza_dest:
         print("  SENZA DESTINATARIO:", v)
     print("riepiloghi alle scuole: pronti %d · inviati %d · senza destinatario %d · errori %d" % (pronte, len(inviate), len(senza_dest), len(errori)))
-    if AUTOMATICO and not PROVA_A and (inviate or senza_dest or errori):
+    if AUTOMATICO and not PROVA_A and (inviate or errori):
         oggi = adesso.strftime("%Y-%m-%d")
         att = len(cerca(REG, {"filterGroups": [{"filters": [{"propertyName": "attestato_inviato", "operator": "GTE", "value": oggi + "T00:00:00Z"}]}], "properties": ["email"]}))
         righe = ["Attestati dei corsi, riepilogo del %s." % oggi, "", "Attestati inviati ai partecipanti oggi: %d." % att, "Riepiloghi inviati alle scuole: %d." % len(inviate)]
