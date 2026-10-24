@@ -138,6 +138,9 @@ def spedisci(a, oggetto, testo, html, cc=None):
     s.quit()
 
 
+CACHE_AZ = {}
+
+
 def main():
     adesso = datetime.datetime.now(datetime.timezone.utc)
     if EVENTO:
@@ -167,9 +170,20 @@ def main():
             if NOSTRI.search((p.get("email") or "").strip()) or p.get("solo_registrazione") in ("si", "true"):
                 continue
             gruppi.setdefault(p.get("ordine_corso") or "", []).append(x)
+        # una scuola con piu' ordini sullo stesso corso riceve UNA mail (24/10/2026)
+        per_scuola = {}
         for ordine, gente in sorted(gruppi.items()):
             if not ordine or ordine.startswith("EXTRA-"):
                 continue
+            if ordine not in CACHE_AZ:
+                CACHE_AZ[ordine] = azienda_di(ordine)
+            azienda = CACHE_AZ[ordine]
+            g = per_scuola.setdefault(azienda or "ORD:" + ordine, {"azienda": azienda, "ordini": [], "gente": []})
+            g["ordini"].append(ordine)
+            g["gente"] += gente
+        for chiave_s, g in per_scuola.items():
+            azienda, gente = g["azienda"], g["gente"]
+            ordine = ", ".join(sorted(g["ordini"]))
             if any(x["properties"].get("attestato_scuola_inviato") for x in gente):
                 continue
             if not all(x["properties"].get("attestato_esito") for x in gente):
@@ -185,7 +199,6 @@ def main():
                     sotto.append((nome, durata(m)))
                 else:
                     assenti.append(nome)
-            azienda = azienda_di(ordine)
             dest, motivo = O.destinatari(azienda) if azienda else ([], "ordine senza scuola in HubSpot")
             a = [m for m, _ in dest]
             etichetta = "%s · %s · ordine %s" % (corso[:40], scuola_nome(azienda) if azienda else "?", ordine)
@@ -212,6 +225,8 @@ def main():
                 for x in gente:
                     P.hs("/crm/v3/objects/%s/%s" % (REG, x["id"]), {"properties": {"attestato_scuola_inviato": ""}}, "PATCH")
                 errori.append("%s: %s" % (etichetta, str(ex)[:80]))
+    for v in senza_dest:
+        print("  SENZA DESTINATARIO:", v)
     print("riepiloghi alle scuole: pronti %d · inviati %d · senza destinatario %d · errori %d" % (pronte, len(inviate), len(senza_dest), len(errori)))
     if AUTOMATICO and not PROVA_A and (inviate or senza_dest or errori):
         oggi = adesso.strftime("%Y-%m-%d")
