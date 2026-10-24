@@ -15,6 +15,7 @@ Controlli:
   7. CONSEGNE    conferme rimbalzate negli ultimi 2 giorni;
   8. CATALOGO    pagina online raggiungibile e con le stesse date del palinsesto;
   9. LAVORI      ultimi giri dei workflow dei corsi (GitHub Actions) senza fallimenti.
+ 12. ATTESTATI   corsi conclusi senza attestati elaborati e riepiloghi alle scuole non inviati (dal 24/10/2026).
  10. ORDINI SOSPETTI  ordine ERP senza i corsi chiesti dal catalogo (righe di un altro prodotto); iscritti oltre i posti acquistati;
  11. APPRENDIMENTO    storico giornaliero (audit_corsi_storico.json): i problemi che tornano, quali si sistemano gia' da soli e
                       quali sono candidati a una nuova regola automatica; il lunedi' anche il riepilogo della settimana.
@@ -479,6 +480,30 @@ def lavori():
         ko("9 Lavori", "stato dei workflow non leggibile (%s)" % type(e).__name__)
 
 
+def attestati():
+    """24/10/2026: attestati di partecipazione. Ogni corso concluso da piu' di 30 ore deve essere stato elaborato dal giro dei partecipanti
+    (attestati_elaborati_il) e ogni scuola con persone iscritte deve aver ricevuto il suo riepilogo (attestato_scuola_inviato)."""
+    fine_max = (ADESSO - D.timedelta(hours=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ev = cerca(EV, [{"propertyName": "start_datetime", "operator": "GTE", "value": "2026-10-05T00:00:00Z"},
+                    {"propertyName": "end_datetime", "operator": "LTE", "value": fine_max},
+                    {"propertyName": "attestati_elaborati_il", "operator": "NOT_HAS_PROPERTY"}], ["name", "annullato", "external_id"])
+    ev = [e for e in ev if (e["properties"].get("name") or "").startswith("Corso |") and e["properties"].get("annullato") != "true"]
+    if ev:
+        ko("12 Attestati", "%d corsi conclusi da oltre 30 ore senza attestati elaborati: %s" % (len(ev), ", ".join(sorted((e["properties"].get("external_id") or "?") for e in ev))[:160]))
+    else:
+        ok("12 Attestati", "tutti i corsi conclusi hanno gli attestati elaborati")
+    r = cerca(REG, [{"propertyName": "attestato_esito", "operator": "HAS_PROPERTY"},
+                    {"propertyName": "attestato_scuola_inviato", "operator": "NOT_HAS_PROPERTY"},
+                    {"propertyName": "hs_lastmodifieddate", "operator": "LTE", "value": fine_max}], ["email", "ordine_corso", "event_id"])
+    gr = {(x["properties"].get("event_id"), x["properties"].get("ordine_corso")) for x in r
+          if (x["properties"].get("ordine_corso") or "") and not x["properties"]["ordine_corso"].startswith("EXTRA-")
+          and not NOSTRI.search((x["properties"].get("email") or "").strip())}
+    if gr:
+        ko("12 Attestati", "%d riepiloghi alle scuole in attesa da oltre 30 ore (ordini senza destinatario o giro fermo)" % len(gr))
+    else:
+        ok("12 Attestati", "nessun riepilogo alle scuole in attesa")
+
+
 def ordini_sospetti():
     """Lezioni del 15/10: (a) un ordine ERP con righe di un altro prodotto (WBRITA...) mentre la scuola ha chiesto corsi WBRELE dal
     catalogo; (b) piu' iscritti dei posti acquistati."""
@@ -662,7 +687,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, nominati_registrazione, consegne, catalogo, lavori):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, nominati_registrazione, consegne, catalogo, lavori, attestati):
         try:
             f()
         except Exception as e:

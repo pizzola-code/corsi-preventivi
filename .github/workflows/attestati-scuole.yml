@@ -1,0 +1,36 @@
+name: attestati-scuole
+
+# Riepilogo degli attestati alla SCUOLA (Andrea, 24/10/2026): una e-mail per ordine e per corso dopo che il giro dei partecipanti
+# (repo eventi-dashboard, attestati-corsi.yml, 08:20 italiane) ha elaborato il corso: chi ha l'attestato, chi sotto il 50%, chi non si e' collegato.
+# Un giro al giorno alle 09:30 italiane. L'invio e' acceso dalla variabile del repository SCUOLE_AUTOMATICHE (1 = acceso); spenta, il giro elenca soltanto.
+on:
+  workflow_dispatch:
+    inputs:
+      evento:
+        description: "Facoltativo: solo questo evento (id HubSpot)"
+        type: string
+        default: ""
+  schedule:
+    - cron: '30 7 * * *'
+
+concurrency:
+  group: attestati-scuole
+  cancel-in-progress: false
+
+jobs:
+  scuole:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Riepilogo attestati alle scuole
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          SCUOLE_AUTOMATICHE: ${{ vars.SCUOLE_AUTOMATICHE }}
+          EVENTO: ${{ inputs.evento }}
+        run: python attestati_scuole.py
