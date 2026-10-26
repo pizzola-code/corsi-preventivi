@@ -56,7 +56,7 @@ def righe_corso():
     out, dopo = [], None
     for _ in range(30):
         r = C.hs("/crm/v3/objects/line_items/search", {"filterGroups": [{"filters": [
-            {"propertyName": "hs_sku", "operator": "CONTAINS_TOKEN", "value": "WBRELE*"},
+            {"propertyName": "hs_sku", "operator": "CONTAINS_TOKEN", "value": "WBREL*"},
             {"propertyName": "createdate", "operator": "GTE", "value": str(int((time.time() - 150 * 86400) * 1000))}]}],
             "properties": ["hs_sku", "quantity", "price"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
         for x in r.get("results", []):
