@@ -1,0 +1,30 @@
+name: elenco-agenti-corsi
+
+# Elenco settimanale per gli agenti (piano iscrizioni 26/10/2026): le loro trattative sui corsi con il preventivo aperto,
+# dalla data piu' vicina. Ogni lunedi' alle 08:30 italiane. L'invio e' acceso dalla variabile del repository AGENTI_AUTOMATICI
+# (1 = acceso); spenta, il giro elenca soltanto. Copia a Andrea Pizzola.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 7 * * 1'
+
+concurrency:
+  group: elenco-agenti-corsi
+  cancel-in-progress: false
+
+jobs:
+  agenti:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Elenco agli agenti
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_CORSI_USER: ${{ secrets.SMTP_CORSI_USER }}
+          SMTP_CORSI_PASS: ${{ secrets.SMTP_CORSI_PASS }}
+          AGENTI_AUTOMATICI: ${{ vars.AGENTI_AUTOMATICI }}
+        run: python elenco_agenti_corsi.py
