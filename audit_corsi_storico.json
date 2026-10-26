@@ -80,5 +80,14 @@
 "ok": 21,
 "fix": [],
 "ko": []
+},
+{
+"data": "2026-10-26",
+"ok": 19,
+"fix": [],
+"ko": [
+"altro",
+"ordine_erp_sbagliato"
+]
 }
 ]
