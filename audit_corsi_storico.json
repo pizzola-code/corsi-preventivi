@@ -89,5 +89,14 @@
 "altro",
 "ordine_erp_sbagliato"
 ]
+},
+{
+"data": "2026-10-27",
+"ok": 19,
+"fix": [],
+"ko": [
+"altro",
+"ordine_erp_sbagliato"
+]
 }
 ]
