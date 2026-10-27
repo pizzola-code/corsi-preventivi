@@ -60,12 +60,17 @@ def corpo(p):
     quando = " del %s" % data if data else ""
     nome = (p.get("firstname") or "").strip()
     saluto = ("Gentile %s," % nome) if nome else "Buongiorno,"
-    testo = ("%s\ngrazie per aver partecipato a «%s»%s.\n\nSe la vostra scuola ha domande sul corso o sull'utilizzo del software, "
-             "rispondete a questa e-mail: il nostro team è a disposizione.\n\nSpaggiari" % (saluto, corso, quando))
+    testo = ("%s\ngrazie per aver partecipato a «%s»%s.\n\nPer le domande sul corso (materiali, registrazione, prossime date) "
+             "potete rispondere a questa e-mail.\n\nPer l'assistenza sull'utilizzo del software, la strada più rapida è aprire "
+             "una segnalazione dal Centro Servizi: la richiesta viene presa in carico e seguita fino alla soluzione. Tutorial e "
+             "risposte alle domande più frequenti sono su https://www.spaggiari.eu/supporto-clienti\n\nSpaggiari" % (saluto, corso, quando))
     html = ('<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0f2b2c;">'
             '<p>%s</p><p>grazie per aver partecipato a &laquo;%s&raquo;%s.</p>'
-            '<p>Se la vostra scuola ha domande sul corso o sull&rsquo;utilizzo del software, rispondete a questa e-mail: '
-            'il nostro team &egrave; a disposizione.</p><p>Spaggiari</p></div>'
+            '<p>Per le domande sul corso (materiali, registrazione, prossime date) potete rispondere a questa e-mail.</p>'
+            '<p>Per l&rsquo;assistenza sull&rsquo;utilizzo del software, la strada pi&ugrave; rapida &egrave; aprire una segnalazione '
+            'dal Centro Servizi: la richiesta viene presa in carico e seguita fino alla soluzione. Tutorial e risposte alle domande '
+            'pi&ugrave; frequenti sono nella pagina <a href="https://www.spaggiari.eu/supporto-clienti">Supporto Clienti</a>.</p>'
+            '<p>Spaggiari</p></div>'
             % (saluto.replace("\n", "<br>"), corso, quando))
     return "Grazie per aver seguito il corso", testo, html
 
