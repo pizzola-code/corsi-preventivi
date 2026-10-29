@@ -32,12 +32,26 @@ def _ore_da(iso):
     return (datetime.datetime.now(datetime.timezone.utc) - d).total_seconds() / 3600.0
 
 
+_MEMO = {}
+
+
+def _leggi(percorso):
+    """GET con memo per giro (29/10/2026): gli stessi 7-10 eventi e le stesse trattative erano riletti decine di volte a giro."""
+    if percorso not in _MEMO:
+        _MEMO[percorso] = C.hs(percorso)
+    return _MEMO[percorso]
+
+
 def nominati(evento_id, ordine):
+    k = ("nominati", str(evento_id), ordine)
+    if k in _MEMO:
+        return _MEMO[k]
     r = C.hs("/crm/v3/objects/%s/search" % REG, {"filterGroups": [{"filters": [
         {"propertyName": "event_id", "operator": "EQ", "value": str(evento_id)},
         {"propertyName": "ordine_corso", "operator": "EQ", "value": ordine},
         {"propertyName": "status", "operator": "NEQ", "value": "Canceled"}]}], "properties": ["email"], "limit": 1}, "POST")
-    return r.get("total", len(r.get("results", [])))
+    _MEMO[k] = r.get("total", len(r.get("results", [])))
+    return _MEMO[k]
 
 
 def allerta_agente(deal_id, azienda_id, scuola, corsi, chiave):
@@ -115,7 +129,7 @@ def sollecito_anticipato(ordini, gia, auto, prova):
         per_ordine.setdefault(o["num"], []).append(o)
     for num, righe in per_ordine.items():
         deal = righe[0]["deal"]
-        creato = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % deal)["properties"].get("createdate")
+        creato = _leggi("/crm/v3/objects/deals/%s?properties=createdate" % deal)["properties"].get("createdate")
         if not creato or _ore_da(creato) < GIORNI_SOLLECITO_ORDINE * 24:
             continue
         voci = []
@@ -124,7 +138,7 @@ def sollecito_anticipato(ordini, gia, auto, prova):
             ev, _ = O.evento_per(base, crea=False, prova=True)
             if not ev:
                 continue
-            p = ev["properties"] if "start_datetime" in ev["properties"] else C.hs(
+            p = ev["properties"] if "start_datetime" in ev["properties"] else _leggi(
                 "/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,annullato" % (EV, ev["id"]))["properties"]
             if not p.get("start_datetime") or p.get("annullato") == "true" or _ore_a(p["start_datetime"]) <= ORE_3G:
                 continue
@@ -163,7 +177,7 @@ def sollecito_registrazioni(ordini, gia, auto, prova):
         ev, _ = O.evento_per(m.group(1), crea=False, prova=True)
         if not ev:
             continue
-        p = C.hs("/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,recording_link,annullato" % (EV, ev["id"]))["properties"]
+        p = _leggi("/crm/v3/objects/%s/%s?properties=name,start_datetime,end_datetime,recording_link,annullato" % (EV, ev["id"]))["properties"]
         if p.get("annullato") == "true" or not p.get("recording_link") or _ore_a(p.get("end_datetime") or p["start_datetime"]) > 0:
             continue                                   # solo corsi svolti con la registrazione su Vimeo
         k1, k2 = "%s|%s|sollecito_reg" % (o["num"], o["sku"]), "%s|%s|allarme_reg" % (o["num"], o["sku"])
@@ -171,7 +185,7 @@ def sollecito_registrazioni(ordini, gia, auto, prova):
             continue
         if nominati(ev["id"], o["num"]) > 0:
             continue
-        creato = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
+        creato = _leggi("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
         eta = _ore_da(creato) if creato else 0
         if not creato or creato < (p.get("end_datetime") or p["start_datetime"]):
             continue                                   # ordine fatto PRIMA della diretta: non e' una registrazione acquistata, lo segue l'audit
@@ -226,7 +240,7 @@ def solleciti(ordini, auto, prova):
         if nominati(ev["id"], o["num"]) > 0:
             continue
         if o["deal"] not in ora_ordine:
-            ora_ordine[o["deal"]] = C.hs("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
+            ora_ordine[o["deal"]] = _leggi("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
         eta_ordine = _ore_da(ora_ordine[o["deal"]]) if ora_ordine[o["deal"]] else 999
         k3, k1, a1, a6 = ("%s|%s|%s" % (o["num"], o["sku"], x) for x in ("sollecito3", "sollecito1", "allarme1", "allarme6"))
         v, _ = O.prepara(o, True)
