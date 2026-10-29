@@ -109,6 +109,11 @@ def main(prova=None):
             if esito == "aperto":
                 continue
             coppie.append((f, e, esito))
+    # un ordine ERP assegnato a una trattativa non va riassegnato (29/10/2026: l'ordine 18647 aveva confermato anche la
+    # trattativa del 2/10 dopo che Andrea aveva confermato a mano quella giusta del 6/10)
+    import corsi_ordini as O
+    assegnati = O.registro()
+    coppie = [(f, e, esito) for f, e, esito in coppie if "chiusura|%s" % e["id"] not in assegnati]
     precarica_codici([e["id"] for _, e, _ in coppie])
     for f, e, esito in coppie:
         comuni = cod_f[f["id"]] & codici(e["id"])
@@ -117,6 +122,7 @@ def main(prova=None):
         c = candidati.setdefault(e["id"], {"nome": e["properties"]["dealname"], "esito": esito, "trattative": []})
         c["trattative"].append((f["id"], len(comuni), f["properties"]["dealname"]))
     mosse = {}                                         # trattativa -> (nuovo stadio, ordine)
+    ordine_id = {c["nome"]: eid for eid, c in candidati.items()}
     for eid, c in candidati.items():
         c["trattative"].sort(key=lambda t: -t[1])
         migliore = c["trattative"][0]
@@ -145,6 +151,7 @@ def main(prova=None):
         print("  %s -> %s (ordine %s)" % (nome, "ORDINE CONFERMATO" if stadio == VINTA else "CHIUSA PERSA", ordine))
         if not prova:
             C.hs("/crm/v3/objects/deals/%s" % tid, {"properties": {"dealstage": stadio}}, "PATCH")
+            O.segna("chiusura|%s" % ordine_id[ordine])
             fatte += 1
     print("trattative da chiudere: %d · chiuse ora: %d" % (len(mosse), fatte))
 
