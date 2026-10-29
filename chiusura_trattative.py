@@ -39,7 +39,25 @@ def stadi_erp():
     return out
 
 
+_CODICI = {}
+
+
+def precarica_codici(deal_ids):
+    """Codici corso di molte trattative in due passaggi a blocchi (29/10/2026) invece di due chiamate per trattativa."""
+    ids = [str(i) for i in deal_ids if str(i) not in _CODICI]
+    if not ids:
+        return
+    righe = C.assoc_a_blocchi("deals", "line_items", ids)
+    sku = C.leggi_a_blocchi("line_items", sorted({r for v in (righe or {}).values() for r in v}), ["hs_sku"]) if righe is not None else None
+    if righe is None or sku is None:
+        return                                          # HubSpot rifiuta il blocco: codici() ripiega sul metodo per trattativa
+    for i in ids:
+        _CODICI[i] = {sku[r].get("hs_sku") for r in righe.get(i, []) if r in sku and (sku[r].get("hs_sku") or "").startswith("WBREL")}
+
+
 def codici(deal_id):
+    if str(deal_id) in _CODICI:
+        return _CODICI[str(deal_id)]
     li = C.hs("/crm/v4/objects/deals/%s/associations/line_items" % deal_id).get("results", [])
     if not li:
         return set()
@@ -70,6 +88,8 @@ def main(prova=None):
     # per ogni ordine ERP candidato: a quali trattative potrebbe appartenere
     candidati = {}                                     # id ordine -> {"nome", "stato", "trattative": [(id, in_comune)]}
     cod_f = {}
+    precarica_codici([f["id"] for f in aperte])
+    coppie = []                                        # (trattativa, ordine ERP chiuso) da confrontare
     for f in aperte:
         cod_f[f["id"]] = codici(f["id"])
         if not cod_f[f["id"]]:
@@ -88,11 +108,14 @@ def main(prova=None):
             esito = stato.get(e["properties"].get("dealstage"), "aperto")
             if esito == "aperto":
                 continue
-            comuni = cod_f[f["id"]] & codici(e["id"])
-            if not comuni:
-                continue
-            c = candidati.setdefault(e["id"], {"nome": e["properties"]["dealname"], "esito": esito, "trattative": []})
-            c["trattative"].append((f["id"], len(comuni), f["properties"]["dealname"]))
+            coppie.append((f, e, esito))
+    precarica_codici([e["id"] for _, e, _ in coppie])
+    for f, e, esito in coppie:
+        comuni = cod_f[f["id"]] & codici(e["id"])
+        if not comuni:
+            continue
+        c = candidati.setdefault(e["id"], {"nome": e["properties"]["dealname"], "esito": esito, "trattative": []})
+        c["trattative"].append((f["id"], len(comuni), f["properties"]["dealname"]))
     mosse = {}                                         # trattativa -> (nuovo stadio, ordine)
     for eid, c in candidati.items():
         c["trattative"].sort(key=lambda t: -t[1])

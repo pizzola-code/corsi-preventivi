@@ -161,6 +161,32 @@ def hs(percorso, corpo=None, metodo="GET"):
     return ultimo
 
 
+def assoc_a_blocchi(da, a, ids):
+    """{id: [id collegati]} con una chiamata ogni 1000 id (invece di una per id). None se HubSpot rifiuta: chi chiama ripiega sul metodo lento."""
+    ids = [str(i) for i in ids]
+    out = {i: [] for i in ids}
+    for k in range(0, len(ids), 1000):
+        r = hs("/crm/v4/associations/%s/%s/batch/read" % (da, a), {"inputs": [{"id": i} for i in ids[k:k + 1000]]}, "POST")
+        if not isinstance(r, dict) or r.get("_err") or "results" not in r:
+            return None
+        for x in r["results"]:
+            out[str(x["from"]["id"])] = [str(t["toObjectId"]) for t in x.get("to", [])]
+    return out
+
+
+def leggi_a_blocchi(tipo, ids, proprieta):
+    """{id: proprieta'} con una chiamata ogni 100 id. None se HubSpot rifiuta."""
+    ids = [str(i) for i in ids]
+    out = {}
+    for k in range(0, len(ids), 100):
+        r = hs("/crm/v3/objects/%s/batch/read" % tipo, {"properties": proprieta, "inputs": [{"id": i} for i in ids[k:k + 100]]}, "POST")
+        if not isinstance(r, dict) or r.get("_err") or "results" not in r:
+            return None
+        for x in r["results"]:
+            out[str(x["id"])] = x.get("properties", {})
+    return out
+
+
 def lega(da, id_da, a, id_a):
     return hs("/crm/v4/objects/%s/%s/associations/default/%s/%s" % (da, id_da, a, id_a), {}, "PUT")
 

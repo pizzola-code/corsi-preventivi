@@ -157,6 +157,9 @@ def relatori_da_landing(voce):
     return voce.get("relatori", [])
 
 
+_EVENTI = {}
+
+
 def evento_per(base, crea, prova):
     """(id, proprieta') dell'evento del corso; lo crea dal palinsesto se manca. None se non si puo'."""
     voce = next((x for x in palinsesto() if x["base"] == base), None)
@@ -164,10 +167,14 @@ def evento_per(base, crea, prova):
         return None, "codice corso fuori dal palinsesto"
     a, m, g = map(int, voce["data"].split("-"))
     ext = "CF-%s-%02d%02d" % (voce["base"], g, m)
+    # Memo per giro (29/10/2026): i solleciti cercano lo stesso evento centinaia di volte; trovato una volta, non si rilegge.
+    if ext in _EVENTI:
+        return _EVENTI[ext], None
     r = C.hs("/crm/v3/objects/%s/search" % EV, {"filterGroups": [{"filters": [
         {"propertyName": "external_id", "operator": "EQ", "value": ext}]}],
         "properties": ["name", "start_datetime", "end_datetime", "meeting_link"], "limit": 1}, "POST").get("results", [])
     if r:
+        _EVENTI[ext] = r[0]
         return r[0], None
     ini, fin = utc(voce["data"], voce["inizio"]), utc(voce["data"], voce["fine"])
     if ini < datetime.datetime.now(datetime.timezone.utc):
@@ -326,7 +333,13 @@ def _manda(oggetto, righe):
 
 
 # ---------------------------------------------------------------- ordini
+_ORDINI = {}
+
+
 def ordini_nuovi(giorni=30):
+    # Memo per giro: il controllo dei doppioni riusa l'elenco gia' letto invece di rifare la scansione (era +2 minuti a ogni ordine nuovo).
+    if giorni in _ORDINI:
+        return [dict(v) for v in _ORDINI[giorni]]
     pl = C.hs("/crm/v3/pipelines/deals")
     stadio = {s["id"]: s["label"] for p in pl["results"] for s in p["stages"]}
     righe, dopo = [], None
@@ -343,19 +356,34 @@ def ordini_nuovi(giorni=30):
     attuali = {x["base"] for x in palinsesto()}      # solo i corsi del catalogo di oggi (non i vecchi codici)
     righe = [x for x in righe if CORSO.match(x["properties"]["hs_sku"]).group(1) in attuali]
     out = {}
+    # A blocchi (29/10/2026): prima una chiamata ogni 1000 righe per trovare le trattative, poi una ogni 100 per leggerle;
+    # prima erano due chiamate per riga (~500 a giro). Se HubSpot rifiuta il blocco si ripiega sul metodo per riga.
+    collegate = C.assoc_a_blocchi("line_items", "deals", [x["id"] for x in righe])
+    trattative = C.leggi_a_blocchi("deals", sorted({d for v in (collegate or {}).values() for d in v}), ["dealname", "dealstage"]) if collegate is not None else None
+    if collegate is None or trattative is None:
+        collegate, trattative = None, None
+    revocati = C.ordini_revocati()
     for x in righe:
-        for d in C.hs("/crm/v4/objects/line_items/%s/associations/deals" % x["id"]).get("results", []):
-            deal = C.hs("/crm/v3/objects/deals/%s?properties=dealname,dealstage" % d["toObjectId"])["properties"]
+        if collegate is not None:
+            coppie = [(d, trattative.get(d)) for d in collegate.get(str(x["id"]), [])]
+        else:
+            coppie = []
+            for d in C.hs("/crm/v4/objects/line_items/%s/associations/deals" % x["id"]).get("results", []):
+                coppie.append((str(d["toObjectId"]), C.hs("/crm/v3/objects/deals/%s?properties=dealname,dealstage" % d["toObjectId"])["properties"]))
+        for did, deal in coppie:
+            if not deal:
+                continue
             num = re.sub(r"\s*-\s*ERP\s*$", "", deal.get("dealname") or "")
             if not num.startswith(anno) or "vinto" not in (stadio.get(deal.get("dealstage"), "")).lower():
                 continue
-            if num in C.ordini_revocati():
+            if num in revocati:
                 continue
-            voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": d["toObjectId"], "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
+            voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": int(did), "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
             try:
                 voce["qta"] += max(1, int(float(x["properties"].get("quantity") or 1)))     # 2 copie di un corso da 1 posto = 2 posti
             except ValueError:
                 voce["qta"] += 1
+    _ORDINI[giorni] = [dict(v) for v in out.values()]
     return list(out.values())
 
 
