@@ -125,5 +125,13 @@
 "altro",
 "ordine_erp_sbagliato"
 ]
+},
+{
+"data": "2026-10-31",
+"ok": 20,
+"fix": [],
+"ko": [
+"altro"
+]
 }
 ]
