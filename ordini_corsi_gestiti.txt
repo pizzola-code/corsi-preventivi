@@ -633,3 +633,5 @@ chiusura|532704819433
 chiusura|533976397011
 2026EN18753|WBRELBILPA-1|inviato
 ambiguo|2026EN18753 - ERP
+2026EN18649|sollecito_ordine
+2026EN18649|allerta_agente
