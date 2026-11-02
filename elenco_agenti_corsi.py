@@ -72,7 +72,36 @@ def trattative():
         out.append({"id": d["id"], "nome": (p["dealname"] or "")[:60], "owner": p["hubspot_owner_id"], "inviato": inv,
                     "giorni": (OGGI - datetime.date.fromisoformat(inv)).days, "importo": p.get("amount") or "",
                     "prossimo": futuri[0][0] if futuri else "", "corsi": corsi, "futuri": futuri})
-    return out
+    return con_ordine_escluse(out)
+
+
+def con_ordine_escluse(righe):
+    """2/11/2026 (caso Covo/Paolino): l'elenco proponeva di telefonare a scuole che avevano gia' l'ordine in ERP. Si toglie la
+    richiesta se la stessa scuola ha un ordine ERP chiuso vinto, creato non prima di 30 giorni dalla richiesta, con TUTTI i
+    codici (posti compresi) della richiesta. Gli ordini con meno posti o corsi diversi lasciano la richiesta in elenco."""
+    import chiusura_trattative as CT
+    stato = CT.stadi_erp()
+    CT.precarica_codici([r["id"] for r in righe])
+    tenute, tolte = [], []
+    for r in righe:
+        cod = CT.codici(r["id"])
+        az = P.hs("/crm/v4/objects/deals/%s/associations/companies" % r["id"]).get("results", []) if cod else []
+        ordine = None
+        if az:
+            ini = int(datetime.datetime.fromisoformat(r["inviato"]).timestamp() * 1000) - 30 * 86400000
+            for e in P.hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+                    {"propertyName": "associations.company", "operator": "EQ", "value": str(az[0]["toObjectId"])},
+                    {"propertyName": "createdate", "operator": "GTE", "value": str(ini)},
+                    {"propertyName": "pipeline", "operator": "NEQ", "value": P.PIPELINE}]}],
+                    "properties": ["dealname", "dealstage"], "limit": 50}, "POST").get("results", []):
+                nome = e["properties"].get("dealname") or ""
+                if CT.ERP.search(nome) and stato.get(e["properties"].get("dealstage")) == "vinto" and cod <= CT.codici(e["id"]):
+                    ordine = nome
+                    break
+        (tolte if ordine else tenute).append((r, ordine))
+    for r, o in tolte:
+        print("  escluso (ordine gia' arrivato): %s -> %s" % (r["nome"], o))
+    return [r for r, _ in tenute]
 
 
 def corpo(nome_agente, righe):
