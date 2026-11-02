@@ -5,7 +5,7 @@ La richiesta di preventivo dei corsi resta in pipeline Formazione. Quando la scu
 l'affare «<numero> - ERP» con le stesse righe (codici WBREL…): da quel momento
   · ordine in «Chiuso Vinto»  -> la trattativa Formazione passa a «Ordine confermato» (chiusa vinta);
   · ordine in «Chiuso Perso»  -> la trattativa Formazione passa a «Chiusa persa».
-Abbinamento: stessa scuola, ordine creato dopo la richiesta, almeno un codice corso in comune. Se un ordine potrebbe
+Abbinamento: stessa scuola, ordine creato dopo la richiesta (o fino a 30 giorni prima, ma con gli stessi identici codici), almeno un codice corso in comune. Se un ordine potrebbe
 appartenere a piu' trattative con lo stesso numero di codici in comune, non si tocca niente e si segnala.
 
   python chiusura_trattative.py --prova     elenca cosa farebbe
@@ -99,7 +99,7 @@ def main(prova=None):
             continue
         r = C.hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
             {"propertyName": "associations.company", "operator": "EQ", "value": str(az[0]["toObjectId"])},
-            {"propertyName": "createdate", "operator": "GTE", "value": str(int(datetime.datetime.fromisoformat(f["properties"]["createdate"].replace("Z", "+00:00")).timestamp() * 1000) - 2 * 86400000)},
+            {"propertyName": "createdate", "operator": "GTE", "value": str(int(datetime.datetime.fromisoformat(f["properties"]["createdate"].replace("Z", "+00:00")).timestamp() * 1000) - 30 * 86400000)},
             {"propertyName": "pipeline", "operator": "NEQ", "value": PIPELINE}]}],
             "properties": ["dealname", "dealstage", "createdate"], "limit": 50}, "POST").get("results", [])
         for e in r:
@@ -118,6 +118,11 @@ def main(prova=None):
     for f, e, esito in coppie:
         comuni = cod_f[f["id"]] & codici(e["id"])
         if not comuni:
+            continue
+        # 2/11/2026 (caso Covo): la scuola puo' chiedere un nuovo preventivo dopo che l'ordine e' gia' in ERP. Un ordine
+        # creato piu' di 2 giorni PRIMA della richiesta vale solo se ha ESATTAMENTE gli stessi codici (con posti).
+        ts = lambda d: datetime.datetime.fromisoformat(d["properties"]["createdate"].replace("Z", "+00:00")).timestamp()
+        if ts(e) < ts(f) - 2 * 86400 and cod_f[f["id"]] != codici(e["id"]):
             continue
         c = candidati.setdefault(e["id"], {"nome": e["properties"]["dealname"], "esito": esito, "trattative": []})
         c["trattative"].append((f["id"], len(comuni), f["properties"]["dealname"]))
