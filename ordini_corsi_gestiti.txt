@@ -636,3 +636,5 @@ ambiguo|2026EN18753 - ERP
 2026EN18649|sollecito_ordine
 2026EN18649|allerta_agente
 2026EN18481|WBRELEPLSD-1|sollecito_reg
+2026EN18642|sollecito_ordine
+2026EN18642|allerta_agente
