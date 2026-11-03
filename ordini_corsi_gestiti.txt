@@ -663,3 +663,5 @@ sollecito_prev|e73e4dbf5776eacc
 534965393610|WBRELBILPA|avviso_preventivo
 2026EN18828|WBRELECOMP-1|inviato
 535072866504|WBRELBILPA|avviso_preventivo
+535072866504|sollecito_prev_B
+sollecito_prev|956c52c37520e1d6
