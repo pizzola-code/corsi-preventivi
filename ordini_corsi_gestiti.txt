@@ -675,3 +675,6 @@ chiusura|535042300106
 535096247527|WBRELBILPA|avviso_preventivo
 2026EN16997|sollecito_ordine
 2026EN16997|allerta_agente
+535099928810|sollecito_prev_B
+sollecito_prev|0cfd25c89abc2bd8
+535099928810|WBRELBILPA|avviso_preventivo
