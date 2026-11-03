@@ -670,3 +670,5 @@ chiusura|535060770032
 534751428833|sollecito_prev_B
 sollecito_prev|2bb1a19cec5ce9c7
 RECP|454033885379|puglia.assunta@scuolavolta.edu.it
+2026EN18835|WBRELEINS-1|inviato
+chiusura|535042300106
