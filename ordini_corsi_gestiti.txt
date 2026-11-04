@@ -682,3 +682,5 @@ sollecito_prev|0cfd25c89abc2bd8
 chiusura|535113743559
 2026EN18872|WBRELBILPA-1|inviato
 535781826761|WBRELBILPA|avviso_preventivo
+535781826761|sollecito_prev_B
+sollecito_prev|8a642ac9b72f9f1c
