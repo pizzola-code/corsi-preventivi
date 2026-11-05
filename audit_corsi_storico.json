@@ -166,5 +166,15 @@
 "altro",
 "iscrizioni_doppie"
 ]
+},
+{
+"data": "2026-11-05",
+"ok": 18,
+"fix": [],
+"ko": [
+"altro",
+"iscrizioni_doppie",
+"ordine_senza_nominati"
+]
 }
 ]
