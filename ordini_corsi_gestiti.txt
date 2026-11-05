@@ -718,3 +718,4 @@ chiusura|536648776944
 2026EN19017|WBRELESFT-1|inviato
 2026EN19018|WBRELECOMP-1|inviato
 chiusura|536914858195
+RECP|454033815749|arianna.cortolezzis@gceconi.eu
