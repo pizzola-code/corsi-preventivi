@@ -739,3 +739,6 @@ RECP|454495036645|dsga.battaglia@icterranuova.eu
 2026EN19075|WBRELESDAT-1|inviato
 2026EN19075|WBRELEINS-1|inviato
 chiusura|536878452935
+RECP|454067043527|fiorella.feroci@ipseoavarnelli.it
+2026EN18828|sollecito_ordine
+2026EN18828|allerta_agente
