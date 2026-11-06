@@ -347,7 +347,7 @@ def ordini_nuovi(giorni=30):
         r = C.hs("/crm/v3/objects/line_items/search", {"filterGroups": [{"filters": [
             {"propertyName": "hs_sku", "operator": "CONTAINS_TOKEN", "value": "WBREL*"},
             {"propertyName": "createdate", "operator": "GTE", "value": str(int((time.time() - giorni * 86400) * 1000))}]}],
-            "properties": ["hs_sku", "name", "quantity"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
+            "properties": ["hs_sku", "name", "quantity", "createdate"], "limit": 100, **({"after": dopo} if dopo else {})}, "POST")
         righe += [x for x in r.get("results", []) if CORSO.match(x["properties"].get("hs_sku") or "")]
         dopo = (r.get("paging") or {}).get("next", {}).get("after")
         if not dopo:
@@ -379,6 +379,9 @@ def ordini_nuovi(giorni=30):
             if num in revocati:
                 continue
             voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": int(did), "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
+            c_ = x["properties"].get("createdate") or ""      # 6/11/2026: serve a sapere se l'ordine e' arrivato prima o dopo la diretta
+            if c_ and (not voce.get("creato") or c_ < voce["creato"]):
+                voce["creato"] = c_
             try:
                 voce["qta"] += max(1, int(float(x["properties"].get("quantity") or 1)))     # 2 copie di un corso da 1 posto = 2 posti
             except ValueError:
@@ -459,7 +462,9 @@ def possibile_duplicato(num, azienda_id, skus, gia):
 
 def invia_nomina_registrazione(registrati, auto, prova, gia):
     """Ordine a corso FINITO con registrazione su Vimeo (16/10/2026): una e-mail per corso, con il modello dedicato alle registrazioni
-    (niente «diretta»/Zoom), alla scuola che indica chi guarda; ogni nominato riceve poi il link personale (registrazioni_illimitate.giro)."""
+    (niente «diretta»/Zoom), alla scuola che indica chi guarda; ogni nominato riceve poi il link personale (registrazioni_illimitate.giro).
+    Restituisce i numeri d'ordine per cui l'e-mail e' partita."""
+    inviati = []
     for o, v in registrati:
         k_inv = "%s|%s|inviato" % (o["num"], o["sku"])
         if k_inv in gia:
@@ -488,6 +493,8 @@ def invia_nomina_registrazione(registrati, auto, prova, gia):
         print("     nomina registrazione inviata da HubSpot:", r.get("status"), (r.get("statusId") or "")[:20])
         if "_err" not in r:
             segna(k_inv)
+            inviati.append(o["num"])
+    return inviati
 
 
 def invia_registrazioni(finiti, auto, prova, gia):
@@ -714,6 +721,10 @@ def main():
         registrazioni_illimitate.giro(os_, auto, prova)
     except Exception as e:
         print("  ERRORE nelle registrazioni agli illimitati: %s %s" % (type(e).__name__, str(e)[:160]))
+    try:
+        registrazioni_illimitate.nomine_tardive(os_, auto, prova)      # 6/11/2026: ordine anteriore al corso e nessun nominato
+    except Exception as e:
+        print("  ERRORE nelle nomine tardive: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
         import solleciti_corsi
         solleciti_corsi.solleciti(os_, auto, prova)
