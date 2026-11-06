@@ -742,3 +742,7 @@ chiusura|536878452935
 RECP|454067043527|fiorella.feroci@ipseoavarnelli.it
 2026EN18828|sollecito_ordine
 2026EN18828|allerta_agente
+RECP|454033544438|sara.lazar@ipseoavarnelli.it
+RECP|454033815749|manuela.meschini@ipseoavarnelli.it
+RECP|454072748265|sara.lazar@ipseoavarnelli.it
+RECP|454494897357|luisa.corvini@ipseoavarnelli.it
