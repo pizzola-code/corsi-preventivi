@@ -794,3 +794,6 @@ RECP|454495036645|dsga@istas.mo.it
 2026EN18647|sollecito_ordine
 2026EN19027|sollecito_ordine
 2026EN19027|allerta_agente
+2026EN19028|sollecito_ordine
+2026EN19028|allerta_agente
+2026EN19028|WBRELBILPA-1|sollecito_reg
