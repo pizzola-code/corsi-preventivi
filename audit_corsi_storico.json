@@ -196,5 +196,14 @@
 "iscrizioni_doppie",
 "ordine_senza_nominati"
 ]
+},
+{
+"data": "2026-11-08",
+"ok": 21,
+"fix": [],
+"ko": [
+"altro",
+"iscrizioni_doppie"
+]
 }
 ]
