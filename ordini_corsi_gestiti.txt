@@ -799,3 +799,5 @@ RECP|454495036645|dsga@istas.mo.it
 2026EN19028|WBRELBILPA-1|sollecito_reg
 RECP|454495036645|dsga@grezzanascuole.info
 RECP|454495036645|g.langella@itetmantegna.edu.it
+2026EN19228|WBRELESDAT-1|inviato
+chiusura|538041480429
