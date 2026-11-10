@@ -214,5 +214,14 @@
 "altro",
 "iscrizioni_doppie"
 ]
+},
+{
+"data": "2026-11-10",
+"ok": 19,
+"fix": [],
+"ko": [
+"altro",
+"iscrizioni_doppie"
+]
 }
 ]
