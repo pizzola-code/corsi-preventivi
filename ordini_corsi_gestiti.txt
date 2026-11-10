@@ -818,3 +818,9 @@ RECP|454067043527|ginadaniela.labate@iisscotton.it
 rimbalzo|dsga@icmussolente.eu
 rimbalzo|dirigente@mussolente.eu
 2026EN19298|WBRELEINS-1|sollecito3
+2026EN19410|WBRELEVEGA-1|inviato
+2026EN19410|WBRELEPERR-1|inviato
+2026EN19410|WBRELESFT-1|inviato
+2026EN19410|WBRELESOS-1|inviato
+2026EN19410|WBRELBILF-1|inviato
+chiusura|538868271325
