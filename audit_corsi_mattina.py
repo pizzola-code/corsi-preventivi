@@ -512,7 +512,7 @@ def formazione_ordini():
     import subprocess
     r = subprocess.run([sys.executable, os.path.join(QUI, "controllo_corsi.py")], capture_output=True, text=True, timeout=600, encoding="utf-8", errors="replace")
     righe = [x.strip() for x in (r.stdout or "").splitlines()]
-    prob = [x[len("!!!!"):].strip() for x in righe if x.startswith("!!!!") and "nessun nominato" not in x]
+    prob = [x[len("!!!!"):].strip() for x in righe if x.startswith("!!!!") and "nessun nominato" not in x and "senza invito" not in x]   # senza nominati e senza invito: gia' nella sezione 6
     if r.returncode != 0 and not righe:
         ko("13 Richieste Formazione", "controllo_corsi.py non e' andato a buon fine: %s" % (r.stderr or "")[-160:].replace(chr(10), " "))
     elif prob:
