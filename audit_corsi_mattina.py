@@ -462,6 +462,20 @@ def catalogo():
     (ko if mancano else ok)("8 Catalogo", ("date del palinsesto assenti dalla pagina: " + ", ".join(mancano)) if mancano else "le %d date future del palinsesto sono tutte in pagina" % len(pal))
 
 
+def _gh(tok, metodo, url, corpo=None):
+    r = urllib.request.Request(url, data=(json.dumps(corpo).encode() if corpo is not None else None), method=metodo,
+                               headers={"Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json", "Content-Type": "application/json"})
+    with urllib.request.urlopen(r, timeout=60) as x:
+        b = x.read()
+    return json.loads(b) if b else {}
+
+
+# Workflow che si possono rilanciare in sicurezza: idempotenti, con registro nel repository (10/11/2026). Fuori: i report e gli attestati (inviano posta).
+# Si rilancia con workflow_dispatch sull'ultimo commit e mai con re-run: un re-run riparte dal commit vecchio, cioe' con il registro vecchio
+# (il 14/10/2026 tre registrazioni uscirono due volte). Una volta sola per audit: se il giro rilanciato fallisce, resta «da sistemare».
+RILANCIABILI = ("ordini-corsi.yml", "preventivi-corsi.yml", "corsi-partecipazioni.yml", "preventivi-italiascuola.yml", "chiusura-italiascuola.yml")
+
+
 def lavori():
     tok, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY", "pizzola-code/corsi-preventivi")
     if not tok:
@@ -469,15 +483,42 @@ def lavori():
     try:
         out = []
         for wf in ("ordini-corsi.yml", "preventivi-corsi.yml", "corsi-partecipazioni.yml", "report-corsi.yml"):
-            r = urllib.request.Request("https://api.github.com/repos/%s/actions/workflows/%s/runs?per_page=30" % (repo, wf), headers={"Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json"})
-            runs = json.load(urllib.request.urlopen(r, timeout=60)).get("workflow_runs", [])
+            runs = _gh(tok, "GET", "https://api.github.com/repos/%s/actions/workflows/%s/runs?per_page=30" % (repo, wf)).get("workflow_runs", [])
             ultime = [x for x in runs if dt(x["created_at"]) > ADESSO - D.timedelta(hours=24) and x["status"] == "completed"]
             ko_ = [x for x in ultime if x["conclusion"] == "failure"]
             if ko_:
                 out.append("%s: %d giri falliti su %d nelle ultime 24 ore" % (wf, len(ko_), len(ultime)))
         (ko if out else ok)("9 Lavori", (" · ".join(out)) if out else "workflow dei corsi senza giri falliti nelle ultime 24 ore")
+        # rilancio: l'ultimo giro concluso e' fallito da meno di 6 ore e non ce n'e' uno in corso
+        for wf in RILANCIABILI:
+            runs = _gh(tok, "GET", "https://api.github.com/repos/%s/actions/workflows/%s/runs?per_page=5" % (repo, wf)).get("workflow_runs", [])
+            conclusi = [x for x in runs if x["status"] == "completed"]
+            if not conclusi or conclusi[0]["conclusion"] != "failure" or dt(conclusi[0]["created_at"]) < ADESSO - D.timedelta(hours=6):
+                continue
+            if any(x["status"] != "completed" for x in runs):
+                continue
+            if PROVA:
+                fix("9 Lavori", "[prova] rilancerei %s: l'ultimo giro e' fallito" % wf)
+            else:
+                _gh(tok, "POST", "https://api.github.com/repos/%s/actions/workflows/%s/dispatches" % (repo, wf), {"ref": "main"})
+                fix("9 Lavori", "%s: ultimo giro fallito, rilanciato sull'ultimo commit" % wf)
     except Exception as e:
         ko("9 Lavori", "stato dei workflow non leggibile (%s)" % type(e).__name__)
+
+
+def formazione_ordini():
+    """Richieste Formazione e ordini (controllo_corsi.py, portato nel cloud il 10/11/2026): inviti nel registro, richieste aperte per ordini gia' arrivati,
+    richieste doppie, scuola e importi. Il punto «senza nominati» e' gia' nella sezione 6, qui si salta."""
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(QUI, "controllo_corsi.py")], capture_output=True, text=True, timeout=600, encoding="utf-8", errors="replace")
+    righe = [x.strip() for x in (r.stdout or "").splitlines()]
+    prob = [x[len("!!!!"):].strip() for x in righe if x.startswith("!!!!") and "nessun nominato" not in x]
+    if r.returncode != 0 and not righe:
+        ko("13 Richieste Formazione", "controllo_corsi.py non e' andato a buon fine: %s" % (r.stderr or "")[-160:].replace(chr(10), " "))
+    elif prob:
+        ko("13 Richieste Formazione", " · ".join(prob)[:600])
+    else:
+        ok("13 Richieste Formazione", "inviti partiti, nessuna richiesta aperta doppia o per ordini gia' arrivati, scuola e importi coerenti")
 
 
 def attestati():
@@ -687,7 +728,7 @@ def main():
                 print("audit di oggi gia' fatto"); return
         except FileNotFoundError:
             pass
-    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, nominati_registrazione, consegne, catalogo, lavori, attestati):
+    for f in (eventi_e_zoom, ordini, ordini_sospetti, registrazione_illimitati, pagina_registrazione, nominati_registrazione, consegne, catalogo, lavori, attestati, formazione_ordini):
         try:
             f()
         except Exception as e:
