@@ -844,3 +844,6 @@ chiusura|539479565517
 2026EN19455|WBRELEVV-3|inviato
 2026EN19455|WBRELEINS-3|inviato
 chiusura|539512911092
+RECP|454033885379|direttore@ducabruzzi.eu
+RECP|454033885379|fittante.manuela@ducabruzzi.eu
+RECP|454033885379|castaldo.italia@ducabruzzi.eu
