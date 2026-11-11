@@ -824,3 +824,16 @@ rimbalzo|dirigente@mussolente.eu
 2026EN19410|WBRELESOS-1|inviato
 2026EN19410|WBRELBILF-1|inviato
 chiusura|538868271325
+536806880471|sollecito_prev_B
+sollecito_prev|2b3569e9be8ba6a6
+538215897322|sollecito_prev_B
+sollecito_prev|ffb72dd29d31347f
+527341854929|WBRELEINS|avviso_preventivo
+530160468204|WBRELEINS|avviso_preventivo
+531287131367|WBRELEINS|avviso_preventivo
+534751428833|WBRELEINS|avviso_preventivo
+535096247527|WBRELEINS|avviso_preventivo
+536806880471|WBRELEINS|avviso_preventivo
+537128483015|WBRELEINS|avviso_preventivo
+537605303485|WBRELEINS|avviso_preventivo
+538215897322|WBRELEINS|avviso_preventivo
