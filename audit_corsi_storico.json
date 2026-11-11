@@ -223,5 +223,16 @@
 "altro",
 "iscrizioni_doppie"
 ]
+},
+{
+"data": "2026-11-11",
+"ok": 17,
+"fix": [],
+"ko": [
+"altro",
+"indirizzo_errato",
+"iscrizioni_doppie",
+"ordine_senza_nominati"
+]
 }
 ]
