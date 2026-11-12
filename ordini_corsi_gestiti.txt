@@ -858,3 +858,7 @@ RECP|454033885379|castaldo.italia@ducabruzzi.eu
 chiusura|539605161203
 RECP|454072748265|mirella.pace@torricellimaniago.edu.it
 RECP|454494897357|umberto.dilonardo@torricellimaniago.edu.it
+2026EN18835|WBRELEINS-1|sollecito1
+2026EN19497|WBRELEINS-1|sollecito1
+2026EN18835|WBRELEINS-1|allarme1
+2026EN19497|WBRELEINS-1|allarme1
