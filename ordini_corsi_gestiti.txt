@@ -883,3 +883,5 @@ rimbalzo|catterinatoppi@comprensivo1sesto.edu.it
 chiusura|540223619291
 2026EN19585|WBRELEINS-3|allerta_agente_1g
 2026EN19585|WBRELEINS-3|allarme1
+2026EN19587|WBRELESDP-1|inviato
+chiusura|540247474377
