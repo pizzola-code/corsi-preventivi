@@ -876,3 +876,10 @@ RECP|455195792574|jessica.diricco@icdonaldomei.edu.it
 rimbalzo|catterinatoppi@comprensivo1sesto.edu.it
 540052424901|WBRELEINS|avviso_preventivo
 2026EN19268|sollecito_ordine
+2026EN19585|WBRELEPERB-3|inviato
+2026EN19585|WBRELEVEGA-3|inviato
+2026EN19585|WBRELEPERR-3|inviato
+2026EN19585|WBRELEINS-3|inviato
+chiusura|540223619291
+2026EN19585|WBRELEINS-3|allerta_agente_1g
+2026EN19585|WBRELEINS-3|allarme1
