@@ -868,3 +868,5 @@ RECP|454067043527|alda.trovatelli@icdonaldomei.edu.it
 chiusura|539762825404
 RECP|454495036645|anna.dasanbiagio@icdonaldomei.edu.it
 RECP|455349388486|gioia.sbragia@icdonaldomei.edu.it
+RECP|454033207508|dirigentesesto1@comprensivo1sesto.edu.it
+RECP|454033207508|caterinatoppi@comprensivo1sesto.edu.it
