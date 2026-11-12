@@ -234,5 +234,16 @@
 "iscrizioni_doppie",
 "ordine_senza_nominati"
 ]
+},
+{
+"data": "2026-11-12",
+"ok": 17,
+"fix": [],
+"ko": [
+"altro",
+"indirizzo_errato",
+"iscrizioni_doppie",
+"ordine_senza_nominati"
+]
 }
 ]
