@@ -359,7 +359,7 @@ def ordini_nuovi(giorni=30):
     # A blocchi (29/10/2026): prima una chiamata ogni 1000 righe per trovare le trattative, poi una ogni 100 per leggerle;
     # prima erano due chiamate per riga (~500 a giro). Se HubSpot rifiuta il blocco si ripiega sul metodo per riga.
     collegate = C.assoc_a_blocchi("line_items", "deals", [x["id"] for x in righe])
-    trattative = C.leggi_a_blocchi("deals", sorted({d for v in (collegate or {}).values() for d in v}), ["dealname", "dealstage"]) if collegate is not None else None
+    trattative = C.leggi_a_blocchi("deals", sorted({d for v in (collegate or {}).values() for d in v}), ["dealname", "dealstage", "createdate"]) if collegate is not None else None
     if collegate is None or trattative is None:
         collegate, trattative = None, None
     revocati = C.ordini_revocati()
@@ -369,7 +369,7 @@ def ordini_nuovi(giorni=30):
         else:
             coppie = []
             for d in C.hs("/crm/v4/objects/line_items/%s/associations/deals" % x["id"]).get("results", []):
-                coppie.append((str(d["toObjectId"]), C.hs("/crm/v3/objects/deals/%s?properties=dealname,dealstage" % d["toObjectId"])["properties"]))
+                coppie.append((str(d["toObjectId"]), C.hs("/crm/v3/objects/deals/%s?properties=dealname,dealstage,createdate" % d["toObjectId"])["properties"]))
         for did, deal in coppie:
             if not deal:
                 continue
@@ -379,9 +379,12 @@ def ordini_nuovi(giorni=30):
             if num in revocati:
                 continue
             voce = out.setdefault((num, x["properties"]["hs_sku"]), {"deal": int(did), "num": num, "sku": x["properties"]["hs_sku"], "qta": 0})
-            c_ = x["properties"].get("createdate") or ""      # 6/11/2026: serve a sapere se l'ordine e' arrivato prima o dopo la diretta
-            if c_ and (not voce.get("creato") or c_ < voce["creato"]):
-                voce["creato"] = c_
+            # 6/11/2026: serve a sapere se l'ordine e' arrivato prima o dopo la diretta.
+            # 13/11/2026 (caso IC Stabilini, ordine 19009): la sincronizzazione ERP RICREA le righe d'ordine di notte, quindi la loro data
+            # slitta dopo il corso e la nomina tardiva veniva saltata. Conta la data piu' antica fra righe e TRATTATIVA.
+            for c_ in (x["properties"].get("createdate") or "", (deal.get("createdate") or "")):
+                if c_ and (not voce.get("creato") or c_ < voce["creato"]):
+                    voce["creato"] = c_
             try:
                 voce["qta"] += max(1, int(float(x["properties"].get("quantity") or 1)))     # 2 copie di un corso da 1 posto = 2 posti
             except ValueError:
