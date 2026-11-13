@@ -915,3 +915,4 @@ RECP|454067043527|dina.bortolato@barsantigalilei.edu.it
 2026EN19578|WBRELEINS-1|nomina-reg-tardiva
 2026EN19585|WBRELEINS-3|nomina-reg-ok
 chiusura|541473975513
+2026EN19615|WBRELESOS-1|inviato
