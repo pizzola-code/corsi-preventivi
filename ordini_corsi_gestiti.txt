@@ -894,3 +894,4 @@ chiusura|540247474377
 2026EN19578|WBRELEINS-1|allarme6
 2026EN19180|sollecito_ordine
 2026EN19180|allerta_agente
+RECP|454067043527|dina.bortolato@barsantigalilei.edu.it
