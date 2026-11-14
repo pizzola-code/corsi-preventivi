@@ -984,3 +984,4 @@ sollecito_prev|3a3cacc2759be0dd
 538272359610|WBRELESDAT|avviso_preventivo
 539447691478|WBRELESDAT|avviso_preventivo
 540052424901|WBRELESDAT|avviso_preventivo
+RECP|454033815749|carlamaria.zero@torricellimaniago.edu.it
