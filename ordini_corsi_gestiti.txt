@@ -988,3 +988,4 @@ RECP|454033815749|carlamaria.zero@torricellimaniago.edu.it
 RECP|454033544438|antonio.sfera@icbormio.it
 RECP|454067043527|sara.cancliniata@icbormio.it
 2026EN19455|WBRELEVV-3|sollecito_reg
+2026EN19497|WBRELEPVWO-1|sollecito_reg
