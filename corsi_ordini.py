@@ -725,7 +725,10 @@ def main():
     except Exception as e:
         print("  ERRORE nelle registrazioni agli illimitati: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
-        registrazioni_illimitate.nomine_tardive(os_, auto, prova)      # 6/11/2026: ordine anteriore al corso e nessun nominato
+        # 6/11/2026: ordine anteriore al corso e nessun nominato. 16/11/2026: finestra a 90 giorni (le righe d'ordine di un corso
+        # fissato a oltre 30 giorni dall'ordine restavano fuori: caso IIS Pellati, ordine 17002 del 7/10, corso 13/11), una volta all'ora.
+        if datetime.datetime.now().minute < 5 or os.environ.get("FORZA") or prova:
+            registrazioni_illimitate.nomine_tardive(ordini_nuovi(90), auto, prova)
     except Exception as e:
         print("  ERRORE nelle nomine tardive: %s %s" % (type(e).__name__, str(e)[:160]))
     try:
