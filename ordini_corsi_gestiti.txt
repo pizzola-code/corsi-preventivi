@@ -1027,3 +1027,5 @@ RECP|454073541866|giulia.carlesso@icmussolente.eu
 2026EN19268|WBRELESDAT-1|inviato
 2026EN19268|WBRELESDAT-1|nomina-reg-tardiva
 2026EN19638|WBRELESDAT-1|nomina-reg-ok
+2026EN19615|sollecito_ordine
+2026EN19615|allerta_agente
