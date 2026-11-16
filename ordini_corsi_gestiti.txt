@@ -1002,3 +1002,6 @@ RECP|454495036645|tiziana.cazzato@icstabilini.edu.it
 RECP|454072748265|d.balasso@iismontale.edu.it
 RECP|454072748265|a.rina@iismontale.edu.it
 RECP|454072748265|r.blandamura@iismontale.edu.it
+RECP|454033544438|d.balasso@iismontale.edu.it
+RECP|454033544438|a.rina@iismontale.edu.it
+RECP|454033544438|r.blandamura@iismontale.edu.it
