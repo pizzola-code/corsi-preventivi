@@ -999,3 +999,6 @@ RECP|454067043527|sara.cancliniata@icbormio.it
 RECP|454067043527|dirigente@icmussolente.eu
 2026EN18828|WBRELECOMP-1|sollecito3
 RECP|454495036645|tiziana.cazzato@icstabilini.edu.it
+RECP|454072748265|d.balasso@iismontale.edu.it
+RECP|454072748265|a.rina@iismontale.edu.it
+RECP|454072748265|r.blandamura@iismontale.edu.it
