@@ -1067,3 +1067,4 @@ RECP|454073541866|giulia.carlesso@icmussolente.eu
 2026EN17386|WBRELEVEGA-1|nomina-reg-ok
 2026EN16823|WBRELBILPA-1|nomina-reg-ok
 2026EN16775|WBRELBILPA-1|nomina-reg-ok
+chiusura|543110356204
