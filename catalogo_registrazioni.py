@@ -227,7 +227,9 @@ def main(prova):
             break
     for c in cards:
         d = c.get("c_desc") or ""
-        m = re.search(r'data-codice="WBRELE([A-Z0-9]+)"', d)
+        # 16/11/2026: alcuni codici sono WBREL<corso> senza la E (WBRELBILPA, WBRELBILF): il Programma Annuale del 5/11
+        # aveva la registrazione su Vimeo ma restava con la data della diretta. Stessa regola di corsi_ordini.CORSO.
+        m = re.search(r'data-codice="WBRELE?([A-Z0-9]+)"', d)
         v = pal.get(m.group(1)) if m else None
         if not v or ETICHETTA in d:
             continue
