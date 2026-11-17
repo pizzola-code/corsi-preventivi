@@ -1095,3 +1095,4 @@ sollecito_prev|5e37868dde262e23
 chiusura|544118824132
 2026EN19028|WBRELEVEGA-1|allarme_reg
 2026EN19028|WBRELEVEGA-1|sollecito_reg
+rimbalzo|dsga@icdelmare.istruzioneer.it
