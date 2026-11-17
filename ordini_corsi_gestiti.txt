@@ -1072,3 +1072,11 @@ chiusura|543110356204
 2026EN19757|WBRELEVV-3|inviato
 2026EN19757|WBRELESOD-I|inviato
 2026EN19757|WBRELESOS-3|inviato
+RECP|454073541866|romina.pannelli@ipseoavarnelli.it
+RECP|454073541866|isabellamarani@grezzanascuole.info
+RECP|454073541866|antonio.cristiano@liceofanti.edu.it
+RECP|454073541866|f.balestri@itaerfo.it
+RECP|454073541866|elisabetta.giannelli@icdonaldomei.edu.it
+RECP|454073541866|teresa.ronzino@comprensivopetrarca.eu
+RECP|454073541866|acquisti@liceoartisticomunari.edu.it
+RECP|454073541866|raffaele.dalessio@icbormio.it
