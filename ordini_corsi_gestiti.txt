@@ -1080,3 +1080,5 @@ RECP|454073541866|elisabetta.giannelli@icdonaldomei.edu.it
 RECP|454073541866|teresa.ronzino@comprensivopetrarca.eu
 RECP|454073541866|acquisti@liceoartisticomunari.edu.it
 RECP|454073541866|raffaele.dalessio@icbormio.it
+2026EN19075|WBRELEPERB-1|allarme_reg
+2026EN19075|WBRELEPERB-1|sollecito_reg
