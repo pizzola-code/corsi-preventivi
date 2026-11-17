@@ -1082,3 +1082,12 @@ RECP|454073541866|acquisti@liceoartisticomunari.edu.it
 RECP|454073541866|raffaele.dalessio@icbormio.it
 2026EN19075|WBRELEPERB-1|allarme_reg
 2026EN19075|WBRELEPERB-1|sollecito_reg
+533722759371|sollecito_prev_B
+sollecito_prev|5e37868dde262e23
+533283880158|WBRELECOMP|avviso_preventivo
+533294627063|WBRELECOMP|avviso_preventivo
+533722759371|WBRELECOMP|avviso_preventivo
+534751428833|WBRELECOMP|avviso_preventivo
+537605303485|WBRELECOMP|avviso_preventivo
+540052424901|WBRELECOMP|avviso_preventivo
+542904801525|WBRELECOMP|avviso_preventivo
