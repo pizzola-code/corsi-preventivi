@@ -1118,3 +1118,4 @@ sollecito_prev|609eadf7f3f6c2b1
 chiusura|545025294577
 2026EN19965|WBRELECOMP-1|allerta_agente_1g
 2026EN19965|WBRELECOMP-1|allarme1
+chiusura|544979815629
