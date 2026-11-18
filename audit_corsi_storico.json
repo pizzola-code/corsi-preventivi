@@ -305,5 +305,18 @@
 "iscrizioni_doppie",
 "ordine_senza_nominati"
 ]
+},
+{
+"data": "2026-11-18",
+"ok": 17,
+"fix": [],
+"ko": [
+"altro",
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"iscrizione_incompleta",
+"iscrizioni_doppie",
+"ordine_senza_nominati"
+]
 }
 ]
