@@ -1108,3 +1108,5 @@ chiusura|544192180427
 2026EN19917|WBRELESOS-1|inviato
 544958544083|WBRELECOMP|avviso_preventivo
 545041669322|WBRELECOMP|avviso_preventivo
+545041669322|sollecito_prev_B
+sollecito_prev|609eadf7f3f6c2b1
