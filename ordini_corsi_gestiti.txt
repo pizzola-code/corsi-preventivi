@@ -1125,3 +1125,16 @@ chiusura|544920811757
 2026EN19970|WBRELECOMP-1|allarme1
 2026EN19975|WBRELEPLSD-1|inviato
 chiusura|545074209999
+RECP|454073541866|annunziata.vizziello@istitutoguarini.edu.it
+RECP|454073541866|tiziana.campagnuolo@istitutoguarini.edu.it
+RECP|454073541866|elvadia.pernaci@istitutoguarini.edu.it
+RECP|454073541866|dino.acerra@istitutoguarini.edu.it
+RECP|454073541866|fabio.capellini@istitutoguarini.edu.it
+RECP|454073541866|fausto.brancato@istitutoguarini.edu.it
+RECP|454073541866|maria.cecilia.salvadori@istitutoguarini.edu.it
+RECP|454073541866|carmela.santoro@istitutoguarini.edu.it
+RECP|454073541866|dsga@istitutoguarini.edu.it
+RECP|454073541866|maria.bazzocco@iismunari.it
+RECP|454073541866|dsmetrangolo@icdelmare.istruzioneer.it
+RECP|454068554938|ghignonepatrizia@pellatinizza.edu.it
+RECP|454068554938|dsga@icdelmare.istruzioneer.it
