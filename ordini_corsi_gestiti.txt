@@ -1165,3 +1165,6 @@ RECP|455349388486|tavolo.giovanni@icalbignasego.org
 RECP|454838808808|stefano.alborghetti@startingwork.it
 RECP|454838808808|silvia.milani@startingwork.it
 RECP|454838808808|giulia.bosisio@startingwork.it
+RECP|454067043527|stefano.alborghetti@startingwork.it
+RECP|454067043527|giulia.bosisio@startingwork.it
+RECP|454067043527|silvia.milani@startingwork.it
