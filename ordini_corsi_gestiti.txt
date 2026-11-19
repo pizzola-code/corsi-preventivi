@@ -1142,3 +1142,5 @@ rimbalzo|dsmetrangolo@icdelmare.istruzioneer.it
 544988850396|WBRELECOMP|avviso_preventivo
 2026EN19965|WBRELECOMP-1|sollecito1
 2026EN19965|WBRELECOMP-1|allarme6
+2026EN19497|WBRELEPERR-1|allarme_reg
+2026EN19497|WBRELEPERR-1|sollecito_reg
