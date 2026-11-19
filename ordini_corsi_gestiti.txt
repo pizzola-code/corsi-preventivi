@@ -1144,3 +1144,6 @@ rimbalzo|dsmetrangolo@icdelmare.istruzioneer.it
 2026EN19965|WBRELECOMP-1|allarme6
 2026EN19497|WBRELEPERR-1|allarme_reg
 2026EN19497|WBRELEPERR-1|sollecito_reg
+RECP|454838808808|hodaj.flutura@ducabruzzi.eu
+RECP|454838808808|dantino.daniela@ducabruzzi.eu
+RECP|454838808808|direttore@ducabruzzi.eu
