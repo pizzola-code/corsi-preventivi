@@ -744,7 +744,8 @@ formazione).</p>
 <p style="margin:8px 0 0">Gli importi sono <b>esenti da IVA</b>: Gruppo Spaggiari Parma S.p.A. &egrave;
 Ente Certificato per erogare la Formazione del Personale della Scuola.</p></div>
 <p>Per qualsiasi domanda pu&ograve; rispondere a questa e-mail o scrivere al nostro ufficio
-MePA: %(mepa)s.</p>
+MePA: %(mepa)s. Se la persona che segue i corsi usa un altro indirizzo e-mail, ce lo indichi
+rispondendo a questo messaggio: lo aggiungiamo ai prossimi invii.</p>
 <p>Cordiali saluti</p>
 <p style="margin:26px 0"><a href="%(link)s" style="background:%(o)s;color:%(p)s;
 text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;display:inline-block">

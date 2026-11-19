@@ -218,10 +218,26 @@ def mail_istituzionale(azienda_id):
     return None
 
 
+def indirizzi_aggiuntivi(azienda_id):
+    """Indirizzi da aggiungere SEMPRE ai destinatari di una scuola (file destinatari_aggiuntivi.json accanto al motore).
+    Si compila quando la scuola ci scrive da un indirizzo diverso da quello dell'ordine; il file non e' un segreto (solo mail di lavoro)."""
+    try:
+        d = json.load(io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "destinatari_aggiuntivi.json"), encoding="utf-8"))
+        return [e.strip() for e in d.get(str(azienda_id), []) if "@" in e]
+    except (FileNotFoundError, ValueError):
+        return []
+
+
 def destinatari(azienda_id):
     """Come _destinatari_base, piu' l'indirizzo istituzionale della scuola statale; se non si riesce a scegliere nessuno
     (dirigente/DSGA ambigui) l'indirizzo istituzionale basta: il giro non si ferma piu' ad aspettare una persona."""
     out, motivo = _destinatari_base(azienda_id)
+    # 19/11/2026 (Ponti: la referente scriveva da un indirizzo che il motore non conosceva e l'invito e' andato solo all'istituzionale):
+    # indirizzi aggiuntivi per scuola, da destinatari_aggiuntivi.json {"<id azienda HubSpot>": ["mail", ...]}
+    for e in indirizzi_aggiuntivi(azienda_id):
+        if e.lower() not in [x.lower() for x, _ in out]:
+            out = list(out) + [(e, "")]
+            motivo = (motivo + " + indirizzo aggiunto a mano") if motivo else "indirizzo aggiunto a mano"
     ist = mail_istituzionale(azienda_id)
     if ist and ist not in [e.lower() for e, _ in out]:
         out = list(out) + [(ist, "Segreteria")]
