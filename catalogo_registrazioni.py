@@ -209,12 +209,36 @@ def esclusivita_registrazioni(bozza):
     return True
 
 
+def riapri_con_data(c, v, esiste_evento):
+    """19/11/2026 (PVW: edizione del 16/12 creata il 12/11 ma la scheda restava su «Registrazione disponibile»): se un corso
+    gia' convertito in registrazione ha una NUOVA diretta futura (palinsesto + evento vivo), la scheda torna alla data:
+    tendina, «Quando», data-quando e licenza illimitata. Restituisce True se ha modificato la scheda."""
+    d = c.get("c_desc") or ""
+    a, mm, g = map(int, v["data"].split("-"))
+    giorno = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"][datetime.date(a, mm, g).weekday()]
+    mese = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"][mm - 1]
+    testo = "%s %d %s %d · %s–%s" % (giorno, g, mese, a, v["inizio"], v["fine"])
+    nuovo = re.sub(r'<span class="spg-corso-data-label">[^<]*</span>',
+                   '<select class="spg-corso-data" aria-label="Scegli la data del corso"><option value="%s">%s</option></select>' % (testo, testo), d, count=1)
+    nuovo = nuovo.replace('<span class="spg-corso-relatore-et">Registrazione</span><select', '<span class="spg-corso-relatore-et">Quando</span><select', 1)
+    nuovo = re.sub(r'data-quando="[^"]*"', 'data-quando="%s"' % testo, nuovo)
+    if 'data-licenza="Illimitato"' not in nuovo:
+        cod = v["codice"]
+        ill = ('<li><button type="button" class="spg-tar" aria-pressed="false" data-licenza="Illimitato"><b>200&nbsp;&euro;</b>'
+               '<span>Illimitato</span><small class="spg-tar-cod">%s-I</small></button></li>' % cod)
+        nuovo = nuovo.replace("</ul>", ill + "</ul>", 1) if '<ul class="spg-corso-tariffe"' in nuovo else nuovo
+    if nuovo == d:
+        return False
+    c["c_desc"] = nuovo
+    return True
+
+
 def main(prova):
     pal = {x["base"]: x for x in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "corsi_palinsesto.json"), encoding="utf-8"))}
     ora = datetime.datetime.now(datetime.timezone.utc)
     bozza = api("/cms/v3/pages/site-pages/%s/draft" % PAGINA)
     cards = schede(bozza)
-    cambi, senza = [], []
+    cambi, senza, riaperte = [], [], []
     con_reg, dopo = set(), None                       # una sola ricerca: eventi dei corsi con registrazione su Vimeo
     for _ in range(10):
         r = api("/crm/v3/objects/2-143900361/search", "POST", {"filterGroups": [{"filters": [
@@ -231,6 +255,13 @@ def main(prova):
         # aveva la registrazione su Vimeo ma restava con la data della diretta. Stessa regola di corsi_ordini.CORSO.
         m = re.search(r'data-codice="WBRELE?([A-Z0-9]+)"', d)
         v = pal.get(m.group(1)) if m else None
+        if v and ETICHETTA in d:
+            ya, ym, yg = map(int, v["data"].split("-"))
+            hf, mf = map(int, v["fine"].split(":"))
+            fine_v = datetime.datetime(ya, ym, yg, hf - (2 if datetime.datetime(ya, ym, yg) < datetime.datetime(2026, 10, 25) else 1), mf, tzinfo=datetime.timezone.utc)
+            if fine_v > ora and riapri_con_data(c, v, None):
+                riaperte.append(v["codice"])
+            continue
         if not v or ETICHETTA in d:
             continue
         a, mm, g = map(int, v["data"].split("-"))
@@ -264,10 +295,12 @@ def main(prova):
     filtri = sposta_pulsante(bozza) or filtri
     filtri = compatta_filtri(bozza) or filtri
     filtri = esclusivita_registrazioni(bozza) or filtri
+    if riaperte:
+        print("schede riportate alla data (nuova edizione): %s" % ", ".join(riaperte))
     print("schede da portare a «%s»: %s%s" % (ETICHETTA, ", ".join(cambi) or "nessuna", " · filtri/conteggi da aggiornare" if filtri else ""))
     if senza:
         print("corsi passati SENZA registrazione (invariati): %s" % ", ".join(senza))
-    if prova or not (cambi or filtri):
+    if prova or not (cambi or filtri or riaperte):
         return
     api("/cms/v3/pages/site-pages/%s/draft" % PAGINA, "PATCH", {"layoutSections": bozza["layoutSections"], "footerHtml": bozza.get("footerHtml") or ""})
     api("/cms/v3/pages/site-pages/%s/draft/push-live" % PAGINA, "POST")
