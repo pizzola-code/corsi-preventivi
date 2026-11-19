@@ -1162,3 +1162,6 @@ RECP|454072748265|a.ilario@ic4vr.edu.it
 2026EN19970|WBRELECOMP-1|nomina-reg-ok
 RECP|454056832244|coldebella.loris@iisponti.edu.it
 RECP|455349388486|tavolo.giovanni@icalbignasego.org
+RECP|454838808808|stefano.alborghetti@startingwork.it
+RECP|454838808808|silvia.milani@startingwork.it
+RECP|454838808808|giulia.bosisio@startingwork.it
