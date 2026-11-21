@@ -341,5 +341,16 @@
 "iscritti_oltre_posti",
 "iscrizioni_doppie"
 ]
+},
+{
+"data": "2026-11-21",
+"ok": 19,
+"fix": [],
+"ko": [
+"altro",
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"iscrizioni_doppie"
+]
 }
 ]
