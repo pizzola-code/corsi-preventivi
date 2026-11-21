@@ -1188,3 +1188,7 @@ RECP|454056832244|elisa.delledonne@isarteventuri.it
 2026EN19917|allerta_agente
 2026EN19075|WBRELEPERR-1|allarme_reg
 2026EN19075|WBRELEPERR-1|sollecito_reg
+2026EN19965|sollecito_ordine
+2026EN19965|allerta_agente
+2026EN19965|WBRELEVEGA-1|sollecito_reg
+2026EN19965|WBRELESDP-1|sollecito_reg
