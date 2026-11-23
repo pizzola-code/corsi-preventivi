@@ -1195,3 +1195,5 @@ RECP|454056832244|elisa.delledonne@isarteventuri.it
 2026EN18971|sollecito_ordine
 2026EN18971|allerta_agente
 RECP|454067043527|coldebella.loris@iisponti.edu.it
+2026EN20265|WBRELESDP-1|inviato
+chiusura|547763213532
