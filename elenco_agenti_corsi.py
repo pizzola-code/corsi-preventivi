@@ -28,6 +28,9 @@ QUI = os.path.dirname(os.path.abspath(__file__))
 AUTOMATICO = os.environ.get("AGENTI_AUTOMATICI") == "1"
 PROVA_A = os.environ.get("PROVA_A", "")
 COPIA = ["pizzola@spaggiari.eu"]
+# 23/11/2026 (Lepera: «i software sono di competenza di Luca Laganà», che non ha un utente HubSpot): l'elenco delle trattative di
+# Lepera va a Laganà. Chiave = e-mail del proprietario in HubSpot, valore = (nome, e-mail) di chi riceve al suo posto.
+RIDIREZIONE = {"lepera@spaggiarinet.eu": ("Luca", "lagana@spaggiarinet.eu")}
 OGGI = datetime.date.today()
 GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"]
@@ -68,6 +71,10 @@ def trattative():
             if v:
                 corsi.append((v["data"], v["titolo"].replace("�", "-")[:60]))
         futuri = sorted(c for c in corsi if c[0] >= OGGI.isoformat())
+        # 23/11/2026 (Lepera: due trattative di due mesi fa, tutti i corsi gia' svolti): senza una diretta futura non c'e' niente
+        # da ricordare per telefono (le registrazioni si vendono da sole dal catalogo): la trattativa non entra nell'elenco
+        if corsi and not futuri:
+            continue
         inv = (p.get("preventivo_inviato_il") or p["createdate"])[:10]
         out.append({"id": d["id"], "nome": (p["dealname"] or "")[:60], "owner": p["hubspot_owner_id"], "inviato": inv,
                     "giorni": (OGGI - datetime.date.fromisoformat(inv)).days, "importo": p.get("amount") or "",
@@ -112,12 +119,12 @@ def corpo(nome_agente, righe):
         if not rr:
             return "<p>Nessuna.</p>"
         t = '<table style="border-collapse:collapse;font-size:14px"><tr>' + "".join(
-            '<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #06484b">%s</th>' % h for h in ("Scuola", "Corsi", "Prossimo corso", "Preventivo", "Importo")) + "</tr>"
+            '<th style="text-align:left;padding:6px 10px;vertical-align:top;border-bottom:2px solid #06484b">%s</th>' % h for h in ("Scuola", "Corsi", "Prossimo corso", "Preventivo", "Importo")) + "</tr>"
         for r in rr:
             corsi = "<br>".join("%s · %s" % (esc(data_it(d) if d >= OGGI.isoformat() else "registrazione"), esc(t_)) for d, t_ in r["corsi"])
-            t += '<tr><td style="padding:6px 10px;border-bottom:1px solid #ddd">%s</td><td style="padding:6px 10px;border-bottom:1px solid #ddd">%s</td>' \
-                 '<td style="padding:6px 10px;border-bottom:1px solid #ddd">%s</td><td style="padding:6px 10px;border-bottom:1px solid #ddd">inviato %d giorni fa</td>' \
-                 '<td style="padding:6px 10px;border-bottom:1px solid #ddd">%s €</td></tr>' % (
+            t += '<tr><td style="padding:6px 10px;vertical-align:top;border-bottom:1px solid #ddd">%s</td><td style="padding:6px 10px;vertical-align:top;border-bottom:1px solid #ddd">%s</td>' \
+                 '<td style="padding:6px 10px;vertical-align:top;border-bottom:1px solid #ddd">%s</td><td style="padding:6px 10px;vertical-align:top;border-bottom:1px solid #ddd">inviato %d giorni fa</td>' \
+                 '<td style="padding:6px 10px;vertical-align:top;border-bottom:1px solid #ddd">%s €</td></tr>' % (
                      esc(r["nome"]), corsi, esc(data_it(r["prossimo"]) if r["prossimo"] else "-"), r["giorni"], esc(r["importo"]))
         return t + "</table>"
     testo_t = ["Ciao %s," % nome_agente, "", "ecco l'elenco delle tue trattative sui corsi in «Preventivo inviato» (%d), ordinato dalla data più vicina." % len(righe),
@@ -164,6 +171,8 @@ def main():
         o = P.hs("/crm/v3/owners/%s" % owner)
         mail = o.get("email")
         nome = (o.get("firstName") or "").strip().title() or mail
+        if mail and mail.lower() in RIDIREZIONE:
+            nome, mail = RIDIREZIONE[mail.lower()]
         righe.sort(key=lambda r: (r["prossimo"] or "9999", r["giorni"]))
         vicini = sum(1 for r in righe if r["prossimo"] and (datetime.date.fromisoformat(r["prossimo"]) - OGGI).days <= 14)
         print("  %-22s %2d trattative · %d con corso entro 14 giorni · %s" % (nome[:22], len(righe), vicini, mail))
