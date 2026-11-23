@@ -1203,3 +1203,4 @@ chiusura|547763460299
 chiusura|547789635791
 chiusura|548073993451
 2026EN20310|WBRELEPLSD-1|inviato
+RECP|455349388486|ds.pellizzari@icaltivole.edu.it
