@@ -1216,3 +1216,4 @@ RECP|454494897357|coldebella.loris@iisponti.edu.it
 2026EN17020|WBRELESDAT-3|allarme_reg
 2026EN17419|WBRELEVEGA-1|sollecito_reg
 2026EN17419|WBRELEVEGA-1|allarme_reg
+2026EN19268|WBRELESDAT-1|sollecito_reg
