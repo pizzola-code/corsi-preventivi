@@ -1206,3 +1206,13 @@ chiusura|548073993451
 RECP|455349388486|ds.pellizzari@icaltivole.edu.it
 RECP|454495036645|dsga@ferrinifranzosini.edu.it
 RECP|454494897357|coldebella.loris@iisponti.edu.it
+2026EN16821|WBRELECOMP-1|sollecito_reg
+2026EN16821|WBRELECOMP-1|allarme_reg
+2026EN16821|WBRELEPERR-1|sollecito_reg
+2026EN16821|WBRELEPERR-1|allarme_reg
+2026EN17020|WBRELESDP-3|sollecito_reg
+2026EN17020|WBRELESDP-3|allarme_reg
+2026EN17020|WBRELESDAT-3|sollecito_reg
+2026EN17020|WBRELESDAT-3|allarme_reg
+2026EN17419|WBRELEVEGA-1|sollecito_reg
+2026EN17419|WBRELEVEGA-1|allarme_reg
