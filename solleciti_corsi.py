@@ -186,21 +186,30 @@ def sollecito_registrazioni(ordini, gia, auto, prova):
         if nominati(ev["id"], o["num"]) > 0:
             continue
         creato = _leggi("/crm/v3/objects/deals/%s?properties=createdate" % o["deal"])["properties"].get("createdate")
-        eta = _ore_da(creato) if creato else 0
-        if not creato or creato < (p.get("end_datetime") or p["start_datetime"]):
-            continue                                   # ordine fatto PRIMA della diretta: non e' una registrazione acquistata, lo segue l'audit
+        fine = p.get("end_datetime") or p["start_datetime"]
+        if not creato:
+            continue
+        # 24/11/2026 (ordine 2026EN19268: ordinato il 9/11 per la diretta del 16/11, nessuno nominato; dopo la nomina tardiva con il link
+        # alla registrazione non partiva piu' niente e il corso restava pagato e non guardato). Un ordine fatto PRIMA della diretta, a cui
+        # e' gia' partita la nomina tardiva, entra nello stesso percorso dei solleciti, contando i giorni dalla FINE del corso:
+        # promemoria alla scuola dopo 5 giorni, avviso al team dopo 10.
+        prima = creato < fine
+        if prima and "%s|%s|nomina-reg-tardiva" % (o["num"], o["sku"]) not in gia:
+            continue                                   # ordine fatto PRIMA della diretta, senza nomina tardiva: lo segue l'audit
+        eta = _ore_da(fine) if prima else _ore_da(creato)
+        gg_promemoria, gg_team = (5, 10) if prima else (3, 7)
         v, _ = O.prepara(o, True)
         if not v or v.get("mancante"):
             continue
         nome = O.pulito(v["azienda"].get("name"))
-        if eta >= 7 * 24 and k2 not in gia:
-            print("  [solleciti] registrazione %s %s: nessuna persona indicata dopo 7 giorni" % (o["num"], o["sku"]))
+        if eta >= gg_team * 24 and k2 not in gia:
+            print("  [solleciti] registrazione %s %s: nessuna persona indicata dopo %d giorni" % (o["num"], o["sku"], gg_team))
             if not prova:
                 O.avviso_interno("Registrazione acquistata, nessuna persona indicata: %s" % o["num"], [
-                    "<b>%s</b> ha acquistato la registrazione di <b>%s</b> (ordine %s) ma dopo 7 giorni non ha indicato nessuno." % (nome, v["corso"], o["num"]),
+                    "<b>%s</b> ha acquistato la registrazione di <b>%s</b> (ordine %s) ma dopo %d giorni non ha indicato nessuno." % (nome, v["corso"], o["num"], gg_team),
                     "Vale la pena una telefonata: la scuola ha pagato e non ha ancora ricevuto nessun link."])
                 O.segna(k2)
-        if eta >= 3 * 24 and k1 not in gia:
+        if eta >= gg_promemoria * 24 and k1 not in gia:
             dest, motivo = O.destinatari(v["azienda_id"])
             print("  [solleciti] registrazione %s %s: promemoria alla scuola%s" % (o["num"], o["sku"], "" if dest else " (destinatari da decidere)"))
             if prova or not auto or not dest:

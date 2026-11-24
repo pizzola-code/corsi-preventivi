@@ -653,6 +653,48 @@ def stato_richiesta(chiave):
     return "nuova", None
 
 
+STADI_RICHIESTA_APERTI = ["6059680979", "6059680980", "6059680981"]
+STADIO_PERSA = "6059680983"
+
+
+def _base_codici(trattativa):
+    """Codici corso di una trattativa SENZA la desinenza della licenza (-1 / -3 / -I): due richieste dello stesso corso con
+    posti diversi sono la stessa intenzione."""
+    out = set()
+    for i in figli(trattativa, "line_items"):
+        sku = hs("/crm/v3/objects/line_items/%s?properties=hs_sku" % i)["properties"].get("hs_sku") or ""
+        if sku.startswith("WBREL"):
+            out.add(sku.rsplit("-", 1)[0])
+    return out
+
+
+def chiudi_richieste_doppie(nuova, contatto):
+    """24/11/2026 (ITSET Martini: due richieste dello stesso corso e della stessa persona a due giorni di distanza, la prima per una
+    diretta poi svolta): quando parte il preventivo di una richiesta, le richieste PIU' VECCHIE ancora aperte della STESSA persona con
+    gli STESSI corsi passano a «Chiusa persa», sostituite dalla nuova. Mai persone diverse (ognuno puo' chiedere il suo preventivo),
+    mai stadi oltre «In trattativa». Restituisce i numeri delle trattative chiuse."""
+    if not contatto:
+        return []
+    cod_n = _base_codici(nuova)
+    if not cod_n:
+        return []
+    creata = hs("/crm/v3/objects/deals/%s?properties=createdate,dealname" % nuova)["properties"]
+    r = hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+        {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE},
+        {"propertyName": "dealstage", "operator": "IN", "values": STADI_RICHIESTA_APERTI},
+        {"propertyName": "associations.contact", "operator": "EQ", "value": str(contatto)},
+        {"propertyName": "createdate", "operator": "LT", "value": creata["createdate"]}]}],
+        "properties": ["dealname", "createdate"], "limit": 20}, "POST")
+    chiuse = []
+    for d in r.get("results", []):
+        if str(d["id"]) == str(nuova) or _base_codici(d["id"]) != cod_n:
+            continue
+        hs("/crm/v3/objects/deals/%s" % d["id"], {"properties": {"dealstage": STADIO_PERSA, "closed_lost_reason":
+           "Richiesta doppia: stessa persona e stessi corsi, sostituita da %s" % (creata.get("dealname") or nuova)}}, "PATCH")
+        chiuse.append(d["id"])
+    return chiuse
+
+
 def figli(trattativa, tipo):
     a = hs("/crm/v4/objects/deals/%s/associations/%s?limit=100" % (trattativa, tipo))
     # le associazioni v4 restituiscono gli id come numeri: qui diventano testo,
@@ -977,6 +1019,12 @@ def lavora(inv, prova):
     if contatto:
         hs("/crm/v3/objects/contacts/%s" % contatto,
            {"properties": {"ultimo_preventivo_corsi": chiave}}, "PATCH")
+    try:
+        chiuse = chiudi_richieste_doppie(trattativa, contatto)
+        if chiuse:
+            print("  richieste precedenti doppie chiuse (stessa persona, stessi corsi): %s" % ", ".join(chiuse))
+    except Exception as e:            # la pulizia delle doppie non deve mai bloccare un preventivo gia' partito
+        print("  richieste doppie non controllate (%s)" % type(e).__name__)
     print("  preventivo %s inviato a %s da %s" % (dati["hs_quote_number"], mascherato(v["email"]), da))
     # Avviso sul cellulare lasciato nel modulo: dice che il preventivo e'
     # arrivato per e-mail. WhatsApp a chi l'ha chiesto, altrimenti SMS; se

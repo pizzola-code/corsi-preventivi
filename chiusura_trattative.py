@@ -79,6 +79,38 @@ def trattative_aperte():
     return out
 
 
+def _base(cod):
+    return {c.rsplit("-", 1)[0] for c in cod}
+
+
+def richieste_superate(aperte):
+    """24/11/2026 (Don Aldo Mei: quattro richieste della stessa scuola, l'ordine ne ha confermata una; le altre restavano aperte per sempre
+    e finivano nell'elenco settimanale dell'agente). Una richiesta ancora aperta e' SUPERATA se la stessa scuola ha una richiesta PIU'
+    RECENTE gia' in «Ordine confermato» che comprende almeno il 60% dei suoi corsi (confronto senza la desinenza -1/-3/-I).
+    Restituisce [(trattativa, nome, richiesta che la supera)]."""
+    out = []
+    precarica_codici([f["id"] for f in aperte])
+    for f in aperte:
+        cod = codici(f["id"])
+        if not cod:
+            continue
+        az = C.hs("/crm/v4/objects/deals/%s/associations/companies" % f["id"]).get("results", [])
+        if not az:
+            continue
+        vinte = C.hs("/crm/v3/objects/deals/search", {"filterGroups": [{"filters": [
+            {"propertyName": "pipeline", "operator": "EQ", "value": PIPELINE},
+            {"propertyName": "dealstage", "operator": "EQ", "value": VINTA},
+            {"propertyName": "associations.company", "operator": "EQ", "value": str(az[0]["toObjectId"])},
+            {"propertyName": "createdate", "operator": "GT", "value": f["properties"]["createdate"]}]}],
+            "properties": ["dealname"], "limit": 20}, "POST").get("results", [])
+        precarica_codici([v["id"] for v in vinte])
+        for v in vinte:
+            if len(_base(cod) & _base(codici(v["id"]))) >= max(1, 0.6 * len(_base(cod))):
+                out.append((f["id"], f["properties"]["dealname"], v["properties"]["dealname"]))
+                break
+    return out
+
+
 def main(prova=None):
     if prova is None:
         prova = "--prova" in sys.argv
@@ -159,6 +191,15 @@ def main(prova=None):
             O.segna("chiusura|%s" % ordine_id[ordine])
             fatte += 1
     print("trattative da chiudere: %d · chiuse ora: %d" % (len(mosse), fatte))
+    # richieste superate da una richiesta piu' recente gia' convertita in ordine (24/11/2026)
+    gia_mosse = set(mosse)
+    superate = [t for t in richieste_superate([f for f in aperte if f["id"] not in gia_mosse])]
+    for tid, nome, vincitrice in superate:
+        print("  %s -> CHIUSA PERSA (superata da %s, gia' ordine confermato)" % (nome, vincitrice))
+        if not prova:
+            C.hs("/crm/v3/objects/deals/%s" % tid, {"properties": {"dealstage": PERSA, "closed_lost_reason":
+                 "Richiesta superata: la stessa scuola ha gia' un ordine confermato con %s" % vincitrice}}, "PATCH")
+    print("richieste superate: %d%s" % (len(superate), "" if prova else " (chiuse)"))
 
 
 if __name__ == "__main__":
