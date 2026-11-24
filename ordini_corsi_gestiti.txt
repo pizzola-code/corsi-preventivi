@@ -1205,3 +1205,4 @@ chiusura|548073993451
 2026EN20310|WBRELEPLSD-1|inviato
 RECP|455349388486|ds.pellizzari@icaltivole.edu.it
 RECP|454495036645|dsga@ferrinifranzosini.edu.it
+RECP|454494897357|coldebella.loris@iisponti.edu.it
