@@ -1220,3 +1220,6 @@ RECP|454494897357|coldebella.loris@iisponti.edu.it
 2026EN20355|WBRELESFT-3|inviato
 chiusura|548460503243
 RECP|454073541866|barbara.bagliani@liceoproperzio.edu.it
+RECP|454033815749|sandra.bertieri@giottoulivi.edu.it
+RECP|454033815749|angelo.gulisano@giottoulivi.edu.it
+RECP|454033815749|paola.piscitellil@giottoulivi.edu.it
