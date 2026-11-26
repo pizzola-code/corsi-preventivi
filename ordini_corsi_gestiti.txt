@@ -1238,3 +1238,12 @@ chiusura|549084733655
 chiusura|549273752818
 RECP|454056832244|stefano.tarallo@istitutomartini.tv.it
 2026EN20265|WBRELESDP-1|sollecito_reg
+RECP|454033885379|k.papandrea@mail.scuole.vda.it
+RECP|454073541866|k.papandrea@mail.scuole.vda.it
+RECP|454073541866|a.jacquemod@mail.scuole.vda.it
+RECP|454073541866|j.lillaz@mail.scuole.vda.it
+RECP|454068554938|k.papandrea@mail.scuole.vda.it
+RECP|454067043527|a.jacquemod@mail.scuole.vda.it
+RECP|454067043527|c.haudemand@mail.scuole.vda.it
+RECP|454067043527|l.armand@mail.scuole.vda.it
+RECP|454495036645|k.papandrea@mail.scuole.vda.it
