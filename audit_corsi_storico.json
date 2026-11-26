@@ -397,5 +397,16 @@
 "iscrizioni_doppie",
 "ordine_erp_sbagliato"
 ]
+},
+{
+"data": "2026-11-26",
+"ok": 17,
+"fix": [],
+"ko": [
+"altro",
+"indirizzo_errato",
+"iscritti_oltre_posti",
+"iscrizioni_doppie"
+]
 }
 ]
