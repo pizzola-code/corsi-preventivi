@@ -1236,3 +1236,4 @@ chiusura|549084733655
 2026EN20479|WBRELESOS-1|inviato
 2026EN20479|WBRELESOD-1|inviato
 chiusura|549273752818
+RECP|454056832244|stefano.tarallo@istitutomartini.tv.it
