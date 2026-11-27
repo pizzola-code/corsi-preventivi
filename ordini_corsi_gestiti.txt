@@ -1254,3 +1254,5 @@ ambiguo|2026EN20561 - ERP
 rimbalzo|silvia.severini@iccaiogiuliocesare.edu.it
 RECP|454495036645|puglia.assunta@scuolavolta.edu.it
 2026EN20304|WBRELBILPA-1|sollecito_reg
+RECP|454033815749|neri.carmelo@leodavinci.it
+RECP|454033815749|spina.fabiola@leodavinci.it
