@@ -1256,3 +1256,4 @@ RECP|454495036645|puglia.assunta@scuolavolta.edu.it
 2026EN20304|WBRELBILPA-1|sollecito_reg
 RECP|454033815749|neri.carmelo@leodavinci.it
 RECP|454033815749|spina.fabiola@leodavinci.it
+2026EN19410|WBRELESFT-1|allarme_reg
