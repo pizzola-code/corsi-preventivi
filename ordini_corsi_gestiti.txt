@@ -1264,3 +1264,4 @@ chiusura|549225774281
 2026EN20660|WBRELESLSEG-3|inviato
 chiusura|549447930078
 RECP|454056832244|dsga@iisciprianicolombo.edu.it
+2026EN20479|WBRELESFT-1|sollecito_reg
